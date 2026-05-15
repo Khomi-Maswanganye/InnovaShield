@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>InnovaShield – Alerts</title>
+  <link rel="stylesheet" href="/style.css"/>
+  <script>
+    (function(){ 
+      const t = localStorage.getItem('theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+
+    function toggleTheme() {
+    const curr = document.documentElement.getAttribute('data-theme');
+    const next = curr === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    document.querySelector('.theme-toggle').textContent = next === 'dark' ? '◑' : '●';
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const t = localStorage.getItem('theme') || 'dark';
+    const btn = document.querySelector('.theme-toggle');
+    if (btn) btn.textContent = t === 'dark' ? '◑' : '●';
+  });
+  </script>
+</head>
+<body>
+
+<%- include('_nav', { active: 'alerts' }) %>
+
+<div class="container">
+  <div class="page-header">
+    <h1>🔔 Alerts</h1>
+    <p>Trademark renewals, updates and recent ownership changes.</p>
+  </div>
+
+  <div class="summary-banner">
+    <span class="icon">📡</span>
+    <div>
+      <h3>Live Alert Feed</h3>
+      <p>Showing <strong><%= alerts.length %></strong> trademark alert(s) and <strong><%= changes.length %></strong> recent ownership change(s).</p>
+    </div>
+  </div>
+
+  <div class="grid-2">
+
+    <!-- TRADEMARK ALERTS -->
+    <div class="card">
+      <h2>™️ Trademark Alerts</h2>
+      <% if (alerts.length === 0) { %>
+        <div class="no-results">
+          <div class="icon">✅</div>
+          <p>No trademark alerts at this time.</p>
+        </div>
+      <% } else { %>
+        <% alerts.forEach(t => { %>
+        <div class="alert-item">
+          <div class="alert-icon <%= t.status ? t.status.toLowerCase() : '' %>">
+            <% if (t.status === 'Renewed') { %> 🔄
+            <% } else if (t.status === 'Updated') { %> ✏️
+            <% } else { %> ⏳ <% } %>
+          </div>
+          <div class="alert-info">
+            <div class="name"><%= t.name %></div>
+            <div class="detail">Owner: <%= t.owner %> · Industry: <%= t.industry %></div>
+            <div style="margin-top: 0.4rem;">
+              <span class="badge badge-<%= t.status ? t.status.toLowerCase() : '' %>"><%= t.status %></span>
+            </div>
+          </div>
+        </div>
+        <% }) %>
+      <% } %>
+    </div>
+
+    <!-- OWNERSHIP CHANGE ALERTS -->
+    <div class="card">
+      <h2>🔄 Recent Ownership Changes</h2>
+      <% if (changes.length === 0) { %>
+        <div class="no-results">
+          <div class="icon">✅</div>
+          <p>No recent ownership changes.</p>
+        </div>
+      <% } else { %>
+        <% changes.forEach(c => { %>
+        <div class="change-item">
+          <div class="change-title">Patent #<%= c.patent_id %></div>
+          <div class="change-detail">
+            <span><%= c.old_owner %></span>
+            <span class="change-arrow"> → </span>
+            <span><%= c.new_owner %></span>
+          </div>
+          <div class="change-detail" style="margin-top: 0.3rem;">
+            📅 <%= c.change_date ? new Date(c.change_date).toLocaleDateString() : '-' %>
+            · Reason: <%= c.reason || 'N/A' %>
+          </div>
+        </div>
+        <% }) %>
+      <% } %>
+    </div>
+
+  </div>
+</div>
+
+
+</body>
+</html>

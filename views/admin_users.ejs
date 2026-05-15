@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>InnovaShield – User Management</title>
+  <link rel="stylesheet" href="/style.css"/>
+  <script>(function(){ document.documentElement.setAttribute('data-theme', localStorage.getItem('theme')||'dark'); })();</script>
+  <style>
+    .role-badge { padding: 2px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+    .role-Admin { background: rgba(239,68,68,0.15); color: #f87171; }
+    .role-Analyst { background: rgba(79,142,247,0.15); color: #7bb3f8; }
+    .role-Viewer { background: rgba(34,197,94,0.15); color: #4ade80; }
+    .role-select { padding: 4px 8px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 6px; color: var(--text-1); font-size: 0.82rem; }
+  </style>
+</head>
+<body>
+<%- include('_nav', { active: 'admin' }) %>
+<div class="container">
+  <div class="page-header">
+    <h1>👥 User Management</h1>
+    <p>Manage user accounts and role assignments. Only Admins can access this page.</p>
+  </div>
+
+  <% if (flashSuccess && flashSuccess.length) { %>
+  <div class="success-banner">✅ <%= flashSuccess[0] %></div>
+  <% } %>
+  <% if (flashError && flashError.length) { %>
+  <div class="alert-banner"><span class="icon">⚠️</span><span><%= flashError[0] %></span></div>
+  <% } %>
+
+  <div style="display:flex; justify-content:flex-end; margin-bottom:1rem;">
+    <a href="/register" class="btn btn-primary">+ Create New User</a>
+  </div>
+
+  <div class="card">
+    <h2>All Users (<%= users.length %>)</h2>
+    <div class="table-warp">
+    <table>
+      <thead>
+        <tr><th>Username</th><th>Full Name</th><th>Email</th><th>Role</th><th>Created</th><th>Last Login</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        <% users.forEach(u => { %>
+        <tr>
+          <td><strong><%= u.username %></strong></td>
+          <td><%= u.full_name || '-' %></td>
+          <td><%= u.email %></td>
+          <td><span class="role-badge role-<%= u.role %>"><%= u.role %></span></td>
+          <td><%= new Date(u.created_at).toLocaleDateString() %></td>
+          <td><%= u.last_login ? new Date(u.last_login).toLocaleString() : 'Never' %></td>
+          <td>
+            <% if (u.user_id !== currentUser.user_id) { %>
+            <form action="/admin/users/role/<%= u.user_id %>" method="POST" style="display:inline;">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>"/>
+              <select name="role" class="role-select" onchange="this.form.submit()">
+                <option value="Admin" <%= u.role==='Admin'?'selected':'' %>>Admin</option>
+                <option value="Analyst" <%= u.role==='Analyst'?'selected':'' %>>Analyst</option>
+                <option value="Viewer" <%= u.role==='Viewer'?'selected':'' %>>Viewer</option>
+              </select>
+            </form>
+            <form action="/admin/users/delete/<%= u.user_id %>" method="POST" style="display:inline;" onsubmit="return confirm('Delete user <%= u.username %>?')">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>"/>
+              <button class="btn btn-danger btn-sm">Delete</button>
+            </form>
+            <% } else { %>
+            <span style="color:var(--text-3); font-size:0.8rem;">(you)</span>
+            <% } %>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<nav>
+  <a href="/" class="logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24"><path d="M12 2L3 7l9 5 9-5-9-5z"/><path d="M3 17l9 5 9-5"/><path d="M3 12l9 5 9-5"/></svg>
+    </div>
+    <span class="logo-text">Innova<span>Shield</span></span>
+  </a>
+  <% const navUser = typeof currentUser !== 'undefined' ? currentUser : (typeof locals !== 'undefined' ? locals.currentUser : null); %>
+  <div class="nav-links">
+    <% if (!navUser) { %>
+      <a href="/" class="nav-link <%= active === 'home' ? 'active' : '' %>">Home</a>
+      <a href="/watchlist" class="nav-link <%= active === 'watchlist' ? 'active' : '' %>">Watchlist</a>
+      <a href="/pricing" class="nav-link <%= active === 'pricing' ? 'active' : '' %>">Pricing</a>
+    <% } else if (navUser.role === 'Admin') { %>
+      <a href="/admin" class="nav-link <%= active === 'dashboard' ? 'active' : '' %>">Dashboard</a>
+      <a href="/admin/users" class="nav-link <%= active === 'admin' ? 'active' : '' %>">Users</a>
+      <a href="/patents" class="nav-link <%= active === 'patents' ? 'active' : '' %>">Patents</a>
+      <a href="/trademarks" class="nav-link <%= active === 'trademarks' ? 'active' : '' %>">Trademarks</a>
+    <% } else { %>
+      <a href="/" class="nav-link <%= active === 'home' ? 'active' : '' %>">Home</a>
+      <a href="/watchlist" class="nav-link <%= active === 'watchlist' ? 'active' : '' %>">Watchlist</a>
+      <a href="/trends" class="nav-link <%= active === 'trends' ? 'active' : '' %>">AI Trends</a>
+      <a href="/alerts" class="nav-link <%= active === 'alerts' ? 'active' : '' %>">Alerts</a>
+    <% } %>
+  </div>
+  <div class="nav-actions">
+    <% if (!navUser) { %>
+      <a href="/register" class="nav-link">Register</a>
+      <a href="/login" class="nav-link">Login</a>
+    <% } else { %>
+      <a href="/logout" class="nav-link">Log out</a>
+    <% } %>
+    <div class="sync-badge"><span class="sync-dot"></span> Live Sync</div>
+    <button class="theme-toggle" onclick="toggleTheme()">◑</button>
+  </div>
+</nav>

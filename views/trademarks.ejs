@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>InnovaShield – Trademarks</title>
+  <link rel="stylesheet" href="/style.css"/>
+  <script>(function(){ document.documentElement.setAttribute('data-theme', localStorage.getItem('theme')||'dark'); })();</script>
+</head>
+<body>
+
+<%- include('_nav', { active: 'trademarks' }) %>
+
+<div class="container">
+
+  <!-- ═══ AD: Leaderboard ═══════════════════════════════════════ -->
+  <div class="ad-slot ad-slot-leaderboard" style="margin-bottom:1.5rem;">
+    <span class="ad-slot-label">728×90</span>
+  </div>
+
+  <div class="page-header">
+    <h1>™️ Trademark Registry</h1>
+    <p>Trademark data automatically synced from the <strong>USPTO Trademark Status &amp; Document Retrieval API</strong>. All records are kept current without any manual input.</p>
+  </div>
+
+  <% if (success === 'deleted') { %>
+  <div class="success-banner">✅ Trademark removed from database.</div>
+  <% } %>
+
+   <!-- ═══ API SOURCE STRIP ═══════════════════════════════════════ -->
+   <div class="api-strip">
+     <div class="api-logo"><span class="api-logo-icon">™️</span> USPTO Trademark TSDR</div>
+     <div class="api-connector">auto-sync every 6h</div>
+     <% if (lastSyncTime) { %>
+     <div class="api-status">
+       <span style="width:8px;height:8px;border-radius:50%;background:var(--success);animation:dotPulse 2s infinite;display:inline-block;"></span>
+       Last synced <%= new Date(lastSyncTime).toLocaleString() %>
+     </div>
+     <% } else { %>
+     <div class="api-status"><span style="width:8px;height:8px;border-radius:50%;background:var(--success);display:inline-block;animation:dotPulse 2s infinite;"></span> Sync active</div>
+     <% } %>
+   </div>
+
+    <!-- ═══ SYNC PANEL ════════════════════════════════════════════ -->
+    <div class="sync-panel">
+      <div class="sync-info">
+        <h3>🔄 Automatic Trademark Sync</h3>
+        <p>Trademarks are fetched automatically from the <strong>USPTO Trademark API</strong> every 6 hours. Use the trigger below to force an immediate refresh for any keyword.</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.5rem;">
+        <input id="syncTopic" type="text" placeholder="Keyword (e.g. tech)" style="padding:0.55rem 0.9rem;border-radius:9px;border:1px solid var(--border-2);background:var(--surface);color:var(--text);font-size:0.875rem;outline:none;width:180px;font-family:'DM Sans',sans-serif;"/>
+        <button class="btn-sync" id="syncBtn" onclick="triggerSync()">⟳ Sync Trademarks</button>
+      </div>
+    </div>
+
+    <!-- ═══ FILTER BAR ════════════════════════════════════════════ -->
+    <form method="GET" action="/trademarks">
+      <div class="filter-bar">
+        <input type="text" name="q" value="<%= search %>" placeholder="🔍 Search trademark name, owner, number…"/>
+        <button type="submit" class="btn btn-primary btn-sm">Search</button>
+        <% if (search) { %><a href="/trademarks" class="btn btn-ghost btn-sm">✕ Clear</a><% } %>
+      </div>
+    </form>
+
+   <div style="display:flex;gap:1.5rem;align-items:flex-start;">
+     <div style="flex:1;">
+
+       <div class="section-header">
+         <h2>All Trademarks <span class="count-badge"><%= trademarks.length %></span></h2>
+       </div>
+
+        <% if (trademarks.length === 0) { %>
+        <div class="empty-state">
+          <div class="empty-icon">™️</div>
+          <h3>No trademarks found</h3>
+          <p>Trigger a sync above to pull the latest trademark data from the USPTO API, or try a different search keyword.</p>
+        </div>
+        <% } else { %>
+       <div class="card" style="padding:0;">
+         <div class="table-wrap">
+           <table>
+             <thead>
+               <tr>
+                 <th>TM Number</th>
+                 <th>Name</th>
+                 <th>Owner</th>
+                 <th>Industry</th>
+                 <th>Registered</th>
+                 <th>Expires</th>
+                 <th>Status</th>
+                 <th>Action</th>
+               </tr>
+             </thead>
+             <tbody>
+               <% trademarks.forEach(tm => { %>
+               <tr>
+                 <td class="id-cell"><%= tm.trademark_number || '-' %></td>
+                 <td style="font-weight:600;color:var(--text);"><%= tm.name %></td>
+                 <td style="max-width:180px;"><%= tm.owner %></td>
+                 <td><%= tm.industry || '-' %></td>
+                 <td style="font-family:'DM Mono',monospace;font-size:0.8rem;"><%= tm.registration_date ? new Date(tm.registration_date).toLocaleDateString() : '-' %></td>
+                 <td style="font-family:'DM Mono',monospace;font-size:0.8rem;"><%= tm.expiry_date ? new Date(tm.expiry_date).toLocaleDateString() : '-' %></td>
+                 <td><span class="badge badge-<%= (tm.status||'pending').toLowerCase() %>"><%= tm.status %></span></td>
+                 <td>
+                   <form action="/trademarks/delete/<%= tm.trademark_id %>" method="POST" style="display:inline" onsubmit="return confirm('Remove this trademark?')">
+                     <input type="hidden" name="_csrf" value="<%= csrfToken %>"/>
+                     <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                   </form>
+                 </td>
+               </tr>
+               <% }) %>
+             </tbody>
+           </table>
+         </div>
+       </div>
+       <% } %>
+
+    </div>
+
+    <div style="flex-shrink:0;width:300px;display:none;" id="adSidebar">
+      <div class="ad-slot ad-slot-rectangle">
+        <span class="ad-slot-label">300×250</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="ad-slot ad-slot-banner" style="margin-top:2rem;">
+    <span class="ad-slot-label">728×90</span>
+  </div>
+</div>
+
+   <div class="floating-sync" id="syncPopup">
+     <div style="font-weight:700;color:var(--accent2);font-size:0.85rem;">⟳ Syncing Trademarks…</div>
+     <div id="syncStatusText" style="color:var(--text-2);font-size:0.78rem;">Fetching from USPTO Trademark API…</div>
+     <div class="shimmer" style="margin-top:0.5rem;width:100%;height:4px;border-radius:2px;"></div>
+   </div>
+
+   <div class="footer">
+     <div>⚡ InnovaShield — Patent &amp; Trademark Intelligence Platform</div>
+     <div style="margin-top:0.35rem;font-size:0.72rem;">Data from USPTO Trademark Status &amp; Document Retrieval API · Auto-synced every 6 hours</div>
+   </div>
+
+<script>
+function toggleTheme() {
+  const curr = document.documentElement.getAttribute('data-theme');
+  const next = curr === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+}
+
+async function triggerSync() {
+  const btn = document.getElementById('syncBtn');
+  const topic = document.getElementById('syncTopic').value || 'technology';
+  const popup = document.getElementById('syncPopup');
+  const statusText = document.getElementById('syncStatusText');
+
+   btn.textContent = '⟳ Syncing…';
+   btn.disabled = true;
+   popup.style.display = 'flex';
+   popup.style.flexDirection = 'column';
+   statusText.textContent = `Fetching "${topic}" trademarks from USPTO…`;
+
+  try {
+    const res = await fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic })
+    });
+    const data = await res.json();
+    statusText.textContent = `✅ Done! Trademarks: ${data.synced.trademarks} · Patents: ${data.synced.uspto}`;
+    setTimeout(() => {
+      popup.style.display = 'none';
+      window.location.reload();
+    }, 2500);
+  } catch(e) {
+    statusText.textContent = '❌ Sync error. Check server logs.';
+    setTimeout(() => { popup.style.display = 'none'; }, 3000);
+  }
+  btn.textContent = '⟳ Sync Trademarks';
+  btn.disabled = false;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (window.innerWidth > 1100) document.getElementById('adSidebar').style.display = 'block';
+});
+</script>
+
+</body>
+</html>

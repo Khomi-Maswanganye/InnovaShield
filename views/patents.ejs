@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>InnovaShield – Patents</title>
+  <link rel="stylesheet" href="/style.css"/>
+  <script>(function(){ document.documentElement.setAttribute('data-theme', localStorage.getItem('theme')||'dark'); })();</script>
+</head>
+<body>
+
+<%- include('_nav', { active: 'patents' }) %>
+
+<div class="container">
+
+  <!-- ═══ AD: Leaderboard ═══════════════════════════════════════ -->
+  <div class="ad-slot ad-slot-leaderboard" style="margin-bottom:1.5rem;">
+    <span class="ad-slot-label">728×90</span>
+  </div>
+
+   <div class="page-header">
+    <h1>📋 Patent Database</h1>
+    <p>Live patent data automatically synced from the <strong>USPTO PatentsView API</strong>. No manual entry required.</p>
+  </div>
+
+  <% if (success === 'deleted') { %>
+  <div class="success-banner">✅ Patent removed from database.</div>
+  <% } %>
+
+   <!-- ═══ API SOURCE STRIP ═══════════════════════════════════════ -->
+   <div class="api-strip">
+     <div class="api-logo"><span class="api-logo-icon">🇺🇸</span> USPTO PatentsView</div>
+     <div class="api-connector">auto-sync every 6h</div>
+     <% if (lastSyncTime) { %>
+     <div class="api-status">
+       <span style="width:8px;height:8px;border-radius:50%;background:var(--success);animation:dotPulse 2s infinite;display:inline-block;"></span>
+       Last synced <%= new Date(lastSyncTime).toLocaleString() %>
+     </div>
+     <% } else { %>
+     <div class="api-status"><span style="width:8px;height:8px;border-radius:50%;background:var(--success);display:inline-block;animation:dotPulse 2s infinite;"></span> Sync active</div>
+<% } %>
+  </div>
+
+   <!-- ═══ SYNC PANEL ════════════════════════════════════════════ -->
+   <div class="sync-panel">
+     <div class="sync-info">
+       <h3>🔄 Automatic Patent Sync</h3>
+       <p>Patents are pulled automatically from the <strong>USPTO PatentsView API</strong> every 6 hours. Trigger a manual sync below to fetch the latest data now.</p>
+     </div>
+     <div class="sync-sources">
+       <% sourceCounts.forEach(s => { %>
+       <div class="sync-source-pill usptoSrc">
+         <span>🇺🇸</span> <%= s.source %>: <strong><%= s.c %></strong>
+       </div>
+<% }) %>
+      </div>
+      <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+       <div style="display:flex;align-items:center;gap:0.5rem;">
+         <input id="syncTopic" type="text" placeholder="Topic (e.g. AI)" style="padding:0.55rem 0.9rem;border-radius:9px;border:1px solid var(--border-2);background:var(--surface);color:var(--text);font-size:0.875rem;outline:none;width:180px;font-family:'DM Sans',sans-serif;"/>
+         <button class="btn-sync" id="syncBtn" onclick="triggerSync()">⟳ Sync Now</button>
+       </div>
+     </div>
+   </div>
+
+   <!-- ═══ FILTER BAR ════════════════════════════════════════════ -->
+   <form method="GET" action="/patents">
+     <div class="filter-bar">
+       <input type="text" name="q" value="<%= search %>" placeholder="🔍 Search title, owner, patent number…"/>
+       <button type="submit" class="btn btn-primary btn-sm">Search</button>
+       <% if (search) { %><a href="/patents" class="btn btn-ghost btn-sm">✕ Clear</a><% } %>
+     </div>
+   </form>
+
+  <!-- ═══ AD: Rectangle (sidebar style inline) ═════════════════ -->
+  <div style="display:flex;gap:1.5rem;align-items:flex-start;">
+    <div style="flex:1;">
+
+      <div class="section-header">
+        <h2>All Patents <span class="count-badge"><%= patents.length %></span></h2>
+      </div>
+
+       <% if (patents.length === 0) { %>
+       <div class="empty-state">
+         <div class="empty-icon">📭</div>
+         <h3>No patents found</h3>
+         <p>Trigger a sync above to pull the latest patents from USPTO, or try a different search.</p>
+       </div>
+       <% } else { %>
+      <div class="card" style="padding:0;">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Patent No.</th>
+                <th>Title</th>
+                <th>Owner</th>
+                <th>Industry</th>
+                <th>Source</th>
+                <th>Filing</th>
+                <th>Expiry</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% patents.forEach(p => { %>
+              <tr>
+                <td class="id-cell"><%= p.patent_number || '-' %></td>
+                <td style="max-width:280px;font-weight:500;color:var(--text);"><%= p.title %></td>
+                <td style="max-width:180px;"><%= p.owner %></td>
+                <td><%= p.industry || '-' %></td>
+                 <td>
+                   <% if (p.source) { %>
+                   <span class="source-badge uspto"><%= p.source %></span>
+                   <% } else { %><span style="color:var(--muted);font-size:0.75rem;">–</span><% } %>
+                 </td>
+                <td style="font-family:'DM Mono',monospace;font-size:0.8rem;"><%= p.filing_date ? new Date(p.filing_date).toLocaleDateString() : '-' %></td>
+                <td style="font-family:'DM Mono',monospace;font-size:0.8rem;"><%= p.expiry_date ? new Date(p.expiry_date).toLocaleDateString() : '-' %></td>
+                <td><span class="badge badge-<%= (p.status||'pending').toLowerCase() %>"><%= p.status %></span></td>
+                <td>
+                  <form action="/patents/delete/<%= p.patent_id %>" method="POST" style="display:inline" onsubmit="return confirm('Remove this patent from the database?')">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>"/>
+                    <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                  </form>
+                </td>
+              </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <% } %>
+
+    </div>
+
+    <div style="flex-shrink:0;width:300px;display:none;" id="adSidebar">
+      <div class="ad-slot ad-slot-rectangle">
+        <span class="ad-slot-label">300×250</span>
+      </div>
+      <div class="ad-slot ad-slot-rectangle" style="margin-top:1rem;">
+        <span class="ad-slot-label">300×250</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ AD: Footer Banner ════════════════════════════════════ -->
+  <div class="ad-slot ad-slot-banner" style="margin-top:2rem;">
+    <span class="ad-slot-label">728×90</span>
+  </div>
+</div>
+
+<!-- Floating sync status popup -->
+<div class="floating-sync" id="syncPopup">
+  <div style="font-weight:700;color:var(--accent);font-size:0.85rem;">⟳ Syncing Patents…</div>
+  <div id="syncStatusText" style="color:var(--text-2);font-size:0.78rem;">Fetching from USPTO PatentsView…</div>
+  <div class="shimmer" style="margin-top:0.5rem;width:100%;height:4px;border-radius:2px;"></div>
+</div>
+
+<div class="footer">
+  <div>⚡ InnovaShield — Patent &amp; Trademark Intelligence Platform</div>
+  <div style="margin-top:0.35rem;font-size:0.72rem;">Data from USPTO PatentsView API · Auto-synced every 6 hours</div>
+</div>
+
+<script>
+function toggleTheme() {
+  const curr = document.documentElement.getAttribute('data-theme');
+  const next = curr === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+}
+
+async function triggerSync() {
+  const btn = document.getElementById('syncBtn');
+  const topic = document.getElementById('syncTopic').value || 'artificial intelligence';
+  const popup = document.getElementById('syncPopup');
+  const statusText = document.getElementById('syncStatusText');
+
+  btn.textContent = '⟳ Syncing…';
+  btn.disabled = true;
+  popup.style.display = 'flex';
+  statusText.textContent = `Fetching "${topic}" from USPTO PatentsView…`;
+
+  try {
+    const res = await fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic })
+    });
+    const data = await res.json();
+    statusText.textContent = `✅ Done! USPTO: ${data.synced.uspto} · TM: ${data.synced.trademarks}`;
+    setTimeout(() => {
+      popup.style.display = 'none';
+      window.location.reload();
+    }, 2500);
+  } catch(e) {
+    statusText.textContent = '❌ Sync error. Check server logs.';
+    setTimeout(() => { popup.style.display = 'none'; }, 3000);
+  }
+  btn.textContent = '⟳ Sync Now';
+  btn.disabled = false;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (window.innerWidth > 1100) document.getElementById('adSidebar').style.display = 'block';
+});
+</script>
+
+</body>
+</html>

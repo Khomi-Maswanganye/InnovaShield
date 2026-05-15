@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>InnovaShield – Expiring Patents</title>
+ <link rel="stylesheet" href="/style.css"/>
+  <script>
+    (function(){ 
+      const t = localStorage.getItem('theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+
+    function toggleTheme() {
+    const curr = document.documentElement.getAttribute('data-theme');
+    const next = curr === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    document.querySelector('.theme-toggle').textContent = next === 'dark' ? '◑' : '●';
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const t = localStorage.getItem('theme') || 'dark';
+    const btn = document.querySelector('.theme-toggle');
+    if (btn) btn.textContent = t === 'dark' ? '◑' : '●';
+  });
+  </script>
+</head>
+<body>
+
+<%- include('_nav', { active: 'expiring' }) %>
+
+<div class="container">
+  <div class="page-header">
+    <h1>⚠️ Expiring Patents</h1>
+    <p>Patents expiring within the next 90 days.</p>
+  </div>
+
+  <% if (patents.length > 0) { %>
+  <div class="alert-banner">
+    <span class="icon">🔔</span>
+    <span><strong><%= patents.length %> patent(s)</strong> are expiring within the next 90 days. Take action soon.</span>
+  </div>
+  <% } %>
+
+  <div class="card">
+    <h2>Expiring Soon</h2>
+    <% if (patents.length === 0) { %>
+      <div class="no-results">
+        <div class="icon">✅</div>
+        <p>No patents expiring in the next 90 days. You're all good!</p>
+      </div>
+    <% } else { %>
+      <div class="table-warp">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Title</th><th>Owner</th><th>Industry</th><th>Expiry Date</th><th>Days Left</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% patents.forEach(p => { %>
+        <%
+          const today = new Date();
+          const expiry = new Date(p.expiry_date);
+          const daysLeft = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
+          const dayClass = daysLeft <= 30 ? 'days-critical' : daysLeft <= 60 ? 'days-warning' : 'days-ok';
+        %>
+        <tr>
+          <td class="id-cell"><%= p.patent_number || '-' %></td>
+          <td><%= p.title %></td>
+          <td><%= p.owner %></td>
+          <td><%= p.industry %></td>
+          <td><%= new Date(p.expiry_date).toLocaleDateString() %></td>
+          <td><span class="days-left <%= dayClass %>"><%= daysLeft %> days</span></td>
+          <td>
+            <span class="badge badge-<%= p.status ? p.status.toLowerCase() : '' %>"><%= p.status %></span>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+      </div>
+    <% } %>
+  </div>
+
+</div>
+
+
+</body>
+</html>

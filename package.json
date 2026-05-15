@@ -1,0 +1,25 @@
+{
+  "name": "innovashield",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "sync": "node -e \"require('./server.js'); runAutoSync().then(() => console.log('Sync complete')).catch(e => console.error(e));\"",
+    "setup-db": "node setup-db.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "connect-flash": "^0.1.1",
+    "ejs": "^5.0.1",
+    "express": "^5.2.1",
+    "express-session": "^1.18.1",
+    "mysql2": "^3.20.0",
+    "node-fetch": "^3.3.2",
+    "pdfkit": "^0.13.0"
+  }
+}

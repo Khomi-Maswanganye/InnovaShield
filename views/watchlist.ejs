@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>InnovaShield – Watchlist</title>
+  <link rel="stylesheet" href="/style.css"/>
+  <script>
+    (function(){ 
+      const t = localStorage.getItem('theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+
+    function toggleTheme() {
+    const curr = document.documentElement.getAttribute('data-theme');
+    const next = curr === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    document.querySelector('.theme-toggle').textContent = next === 'dark' ? '◑' : '●';
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const t = localStorage.getItem('theme') || 'dark';
+    const btn = document.querySelector('.theme-toggle');
+    if (btn) btn.textContent = t === 'dark' ? '◑' : '●';
+  });
+  </script>
+</head>
+<body>
+
+<%- include('_nav', { active: 'watchlist' }) %>
+
+<div class="container">
+  <div class="page-header">
+    <h1>👁️ Watchlist</h1>
+    <p>Track patents and trademarks you are monitoring for changes.</p>
+  </div>
+
+  <% if (!isAuthenticated) { %>
+  <div class="info-banner">You can explore watchlist features here without being redirected to login. Log in to add, edit, and save your personal watchlist.</div>
+  <% } %>
+
+  <% if (locals.query && locals.query.success === 'added') { %>
+  <div class="success-banner">✅ Added to watchlist!</div>
+  <% } else if (locals.query && locals.query.success === 'updated') { %>
+  <div class="success-banner">✅ Watchlist item updated!</div>
+  <% } else if (locals.query && locals.query.success === 'deleted') { %>
+  <div class="success-banner">✅ Removed from watchlist!</div>
+  <% } %>
+
+  <% if (editItem) { %>
+  <div class="edit-banner">✏️ Editing watchlist item #<%= editItem.watchlist_id %></div>
+  <% } %>
+
+  <% if (isAuthenticated) { %>
+  <!-- ADD / EDIT FORM -->
+  <div class="card">
+    <h2><%= editItem ? '✏️ Edit Watchlist Item' : '+ Add to Watchlist' %></h2>
+    <form action="<%= editItem ? '/watchlist/update' : '/watchlist/add' %>" method="POST" id="watchlistForm">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>"/>
+      <% if (editItem) { %>
+      <input type="hidden" name="watchlist_id" value="<%= editItem.watchlist_id %>"/>
+      <% } %>
+
+      <!-- TYPE TOGGLE -->
+      <div class="type-toggle">
+        <button type="button" class="type-btn active" id="btn-patent" onclick="setWatchType('patent')">📋 Patent</button>
+        <button type="button" class="type-btn" id="btn-trademark" onclick="setWatchType('trademark')">™️ Trademark</button>
+      </div>
+      <input type="hidden" name="type" id="watchType" value="patent"/>
+
+      <div class="form-grid">
+        <!-- Patent select -->
+        <div class="form-group" id="patentGroup">
+          <label>Patent *</label>
+          <select name="patent_id" id="patentSelect">
+            <option value="">Select Patent</option>
+            <% patents.forEach(p => { %>
+            <option value="<%= p.patent_id %>" <%= editItem && editItem.patent_id === p.patent_id ? 'selected' : '' %>>
+              <%= p.patent_number %> — <%= p.title %>
+            </option>
+            <% }) %>
+          </select>
+          <span class="error-msg" id="patentError">Please select a patent</span>
+        </div>
+
+        <!-- Trademark select -->
+        <div class="form-group" id="trademarkGroup" style="display:none;">
+          <label>Trademark *</label>
+          <select name="trademark_id" id="trademarkSelect">
+            <option value="">Select Trademark</option>
+            <% trademarks.forEach(t => { %>
+            <option value="<%= t.trademark_id %>" <%= editItem && editItem.trademark_id === t.trademark_id ? 'selected' : '' %>>
+              <%= t.trademark_number %> — <%= t.name %>
+            </option>
+            <% }) %>
+          </select>
+          <span class="error-msg" id="trademarkError">Please select a trademark</span>
+        </div>
+
+        <div class="form-group">
+          <label>Added By</label>
+          <input type="text" name="user_id" value="<%= editItem ? editItem.user_id : '' %>" placeholder="Your name"/>
+        </div>
+
+        <div class="form-group form-full">
+          <label>Notes</label>
+          <textarea name="notes" placeholder="Why are you watching this?"><%= editItem ? editItem.notes : '' %></textarea>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary"><%= editItem ? 'Update Item' : 'Add to Watchlist' %></button>
+        <% if (editItem) { %>
+        <a href="/watchlist" class="btn btn-secondary">Cancel</a>
+        <% } %>
+      </div>
+    </form>
+  </div>
+  <% } else if (guestCount < 5) { %>
+  <div class="card">
+    <h2>Anonymous Watchlist</h2>
+    <p>You can add up to 5 items before registering. Your temporary watchlist is stored in this browser session.</p>
+    <form action="/watchlist/add" method="POST" id="watchlistForm">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>"/>
+
+      <div class="type-toggle">
+        <button type="button" class="type-btn active" id="btn-patent" onclick="setWatchType('patent')">📋 Patent</button>
+        <button type="button" class="type-btn" id="btn-trademark" onclick="setWatchType('trademark')">™️ Trademark</button>
+      </div>
+      <input type="hidden" name="type" id="watchType" value="patent"/>
+
+      <div class="form-grid">
+        <div class="form-group" id="patentGroup">
+          <label>Patent *</label>
+          <select name="patent_id" id="patentSelect">
+            <option value="">Select Patent</option>
+            <% patents.forEach(p => { %>
+            <option value="<%= p.patent_id %>"><%= p.patent_number %> — <%= p.title %></option>
+            <% }) %>
+          </select>
+          <span class="error-msg" id="patentError">Please select a patent</span>
+        </div>
+
+        <div class="form-group" id="trademarkGroup" style="display:none;">
+          <label>Trademark *</label>
+          <select name="trademark_id" id="trademarkSelect">
+            <option value="">Select Trademark</option>
+            <% trademarks.forEach(t => { %>
+            <option value="<%= t.trademark_id %>"><%= t.trademark_number %> — <%= t.name %></option>
+            <% }) %>
+          </select>
+          <span class="error-msg" id="trademarkError">Please select a trademark</span>
+        </div>
+
+        <div class="form-group">
+          <label>Added By</label>
+          <input type="text" name="user_id" placeholder="Your name (optional)"/>
+        </div>
+
+        <div class="form-group form-full">
+          <label>Notes</label>
+          <textarea name="notes" placeholder="Why are you watching this?"></textarea>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Add to Watchlist</button>
+      </div>
+    </form>
+  </div>
+  <% } else { %>
+  <div class="card">
+    <h2>Anonymous Watchlist Limit Reached</h2>
+    <p>You have reached the 5-item anonymous limit. Please log in or register to continue adding watchlist items and save your list permanently.</p>
+    <a href="/login" class="btn btn-primary">Login</a>
+    <a href="/register" class="btn btn-secondary">Register</a>
+  </div>
+  <% } %>
+
+  <!-- LIST -->
+  <div class="card">
+    <h2>Watchlist Items</h2>
+    <% if (!watchlist || watchlist.length === 0) { %>
+      <p>No watchlist items are available yet.</p>
+    <% } else { %>
+    <div class="table-warp">
+    <table>
+      <thead>
+        <tr>
+          <th>Watchlist ID</th><th>Type</th><th>Name/Title</th><th>Number</th><th>Owner</th><th>Status</th><th>Expiry</th><th>Added By</th><th>Notes</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% watchlist.forEach(w => { %>
+        <tr>
+          <td class="id-cell"><%= w.display_id ? w.display_id : 'WL-' + String(w.watchlist_id).padStart(5, '0') %></td>
+          <td>
+            <% if (w.patent_id) { %>
+            <span class="badge badge-patent">Patent</span>
+            <% } else { %>
+            <span class="badge badge-trademark">Trademark</span>
+            <% } %>
+          </td>
+          <td><%= w.patent_title || w.trademark_title || '-' %></td>
+          <td class="id-cell"><%= w.patent_number || w.trademark_number || '-' %></td>
+          <td><%= w.patent_owner || w.trademark_owner || '-' %></td>
+          <td>
+            <% const status = w.patent_status || w.trademark_status; %>
+            <% if (status) { %>
+            <span class="badge badge-<%= status.toLowerCase() %>"><%= status %></span>
+            <% } else { %> - <% } %>
+          </td>
+          <td><%= (w.patent_expiry || w.trademark_expiry) ? new Date(w.patent_expiry || w.trademark_expiry).toLocaleDateString() : '-' %></td>
+          <td><%= w.user_id || '-' %></td>
+          <td><%= w.notes || '-' %></td>
+          <td>
+            <% if (isAuthenticated) { %>
+            <a href="/watchlist/edit/<%= w.watchlist_id %>" class="btn btn-warning btn-sm">Edit</a>
+            <form action="/watchlist/delete/<%= w.watchlist_id %>" method="POST" style="display:inline" onsubmit="return confirm('Remove from watchlist?')">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>"/>
+              <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+            </form>
+            <% } else { %>
+            —
+            <% } %>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    </div>
+    <% } %>
+  </div>
+</div>
+
+<script>
+function setWatchType(type) {
+    document.getElementById('watchType').value = type;
+    document.getElementById('patentGroup').style.display = type === 'patent' ? 'flex' : 'none';
+    document.getElementById('trademarkGroup').style.display = type === 'trademark' ? 'flex' : 'none';
+    document.getElementById('btn-patent').classList.toggle('active', type === 'patent');
+    document.getElementById('btn-trademark').classList.toggle('active', type === 'trademark');
+}
+
+const watchlistForm = document.getElementById('watchlistForm');
+if (watchlistForm) {
+  watchlistForm.addEventListener('submit', function(e) {
+      let valid = true;
+      const type = document.getElementById('watchType').value;
+      const patent = document.getElementById('patentSelect');
+      const trademark = document.getElementById('trademarkSelect');
+
+      document.querySelectorAll('.error-msg').forEach(el => el.style.display = 'none');
+      document.querySelectorAll('select').forEach(el => el.classList.remove('error'));
+
+      if (type === 'patent' && !patent.value) {
+          patent.classList.add('error');
+          document.getElementById('patentError').style.display = 'block';
+          valid = false;
+      }
+      if (type === 'trademark' && !trademark.value) {
+          trademark.classList.add('error');
+          document.getElementById('trademarkError').style.display = 'block';
+          valid = false;
+      }
+
+       if (!valid) e.preventDefault();
+  });
+}
+</script>
+
+</body>
+</html>

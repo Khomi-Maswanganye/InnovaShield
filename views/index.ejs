@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>InnovaShield – Patent & Trademark Intelligence</title>
+  <link rel="stylesheet" href="/style.css"/>
+  <script>(function(){ document.documentElement.setAttribute('data-theme', localStorage.getItem('theme')||'dark'); })();</script>
+</head>
+<body>
+
+<%- include('_nav', { active: 'home' }) %>
+
+<!-- ═══ AD: Leaderboard Top ═════════════════════════════════════ -->
+<div class="container" style="padding-top:1rem; padding-bottom:0;">
+  <div class="ad-slot ad-slot-leaderboard">
+    <span class="ad-slot-label">728×90</span>
+  </div>
+</div>
+
+<!-- ═══ HERO ═════════════════════════════════════════════════════ -->
+<div class="hero">
+  <div class="hero-visual">
+    <div class="hero-orb hero-orb-1"></div>
+    <div class="hero-orb hero-orb-2"></div>
+    <div class="hero-orb hero-orb-3"></div>
+  </div>
+
+
+
+  <p class="hero-eyebrow">Live Patent &amp; Trademark Intelligence</p>
+  <h1>Protect What You<br/><span>Build &amp; Create</span></h1>
+   <p class="hero-sub">Real-time patent and trademark data synced automatically from <strong>USPTO</strong>. AI-powered insights, expiry alerts, and global IP monitoring in one platform.</p>
+
+  <!-- SEARCH -->
+  <div class="search-wrapper">
+    <form action="/" method="GET" id="searchForm">
+      <div class="search-box">
+        <input type="text" name="q" id="searchInput" placeholder="Search patents, trademarks, owners, industries…" value="<%= query %>"/>
+        <button type="submit">Search</button>
+      </div>
+      <div class="search-toggle">
+        <label class="toggle-label">
+          <input type="radio" name="type" value="both" <% if (!locals.searchType || searchType === 'both') { %>checked<% } %>/> Both
+        </label>
+        <label class="toggle-label">
+          <input type="radio" name="type" value="patents" <% if (locals.searchType === 'patents') { %>checked<% } %>/> Patents Only
+        </label>
+        <label class="toggle-label">
+          <input type="radio" name="type" value="trademarks" <% if (locals.searchType === 'trademarks') { %>checked<% } %>/> Trademarks Only
+        </label>
+      </div>
+    </form>
+   </div>
+</div>
+
+<!-- ═══ LIVE STATS ════════════════════════════════════════════════ -->
+<div class="container" id="main-content" style="padding-top:0;">
+  <div class="stats-bar">
+     <div class="stat-pill">
+       <div class="stat-num" id="statPatents"><%= stats.patents.toLocaleString() %></div>
+       <div class="stat-label">Patents Indexed</div>
+       <div class="stat-src">USPTO PatentsView</div>
+     </div>
+    <div class="stat-pill">
+      <div class="stat-num" id="statTrademarks"><%= stats.trademarks.toLocaleString() %></div>
+      <div class="stat-label">Trademarks Tracked</div>
+      <div class="stat-src">USPTO TM API</div>
+    </div>
+    <div class="stat-pill">
+      <div class="stat-num" id="statActive"><%= stats.active.toLocaleString() %></div>
+      <div class="stat-label">Active Patents</div>
+      <div class="stat-src">Live status</div>
+    </div>
+    <div class="stat-pill">
+      <div class="stat-num" style="color:var(--warning)"><%= stats.expiring %></div>
+      <div class="stat-label">Expiring Soon</div>
+      <div class="stat-src">Next 90 days</div>
+    </div>
+  </div>
+
+  <!-- ═══ AD: Rectangle Right ════════════════════════════════════ -->
+  <div style="display:flex; gap:1.5rem; align-items:flex-start;">
+    <div style="flex:1;">
+
+      <!-- Search results OR feature cards -->
+      <% if (query || industry) { %>
+      <div class="section-header">
+        <h2>Search Results <span class="count-badge"><%= results.length %> found</span></h2>
+        <a href="/" class="btn btn-ghost btn-sm">✕ Clear</a>
+      </div>
+      <% if (results.length === 0) { %>
+      <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <h3>No results found</h3>
+        <p>Try a different keyword or browse by industry using the chips above.</p>
+      </div>
+      <% } else { %>
+      <div class="patents-grid">
+        <% results.forEach((p, i) => { %>
+         <div class="patent-card" style="animation-delay: <%= i * 0.05 %>s">
+           <% if (p.source) { %>
+           <span class="source-badge uspto"><%= p.source %></span>
+           <% } %>
+           <span class="patent-pill" style="<%= p.record_type==='Trademark'?'background:rgba(34,211,238,0.12);color:var(--accent2);':'' %>">
+             <%= p.display_number || p.record_type %>
+           </span>
+          <div class="patent-title"><%= p.display_title %></div>
+          <div class="patent-owner">👤 <%= p.owner %></div>
+          <div class="patent-meta">
+            <span class="meta-item" style="color:var(--accent2);"><%= p.record_type %></span>
+            <span class="meta-item"><span class="status-dot dot-<%= (p.status||'pending').toLowerCase() %>"></span> <%= p.status %></span>
+            <% if (p.expiry_date) { %><span class="meta-item">📅 <%= new Date(p.expiry_date).toLocaleDateString() %></span><% } %>
+            <% if (p.industry) { %><span class="meta-item">🏭 <%= p.industry %></span><% } %>
+          </div>
+        </div>
+        <% }) %>
+      </div>
+      <% } %>
+       <% } else { %>
+        <!-- FEATURE CARDS / SUGGESTED SEARCHES -->
+        <div style="margin-top: 2rem;">
+          <h2>Explore by Industry</h2>
+          <div class="suggested">
+            <a href="/?q=artificial+intelligence" class="chip" data-pjax>🤖 AI</a>
+            <a href="/?q=healthcare" class="chip" data-pjax>🏥 Healthcare</a>
+            <a href="/?q=renewable+energy" class="chip" data-pjax>⚡ Energy</a>
+            <a href="/?q=blockchain" class="chip" data-pjax>🔗 Blockchain</a>
+            <a href="/?q=robotics" class="chip" data-pjax>🦾 Robotics</a>
+            <a href="/?q=quantum" class="chip" data-pjax>⚛️ Quantum</a>
+            <a href="/?q=biotechnology" class="chip" data-pjax>🧬 Biotech</a>
+            <a href="/?q=fintech" class="chip" data-pjax>💰 FinTech</a>
+          </div>
+
+          <h2 style="margin-top: 1.5rem;">Quick Access</h2>
+          <div class="suggested">
+            <a href="/expiring" class="chip">⚠️ Expiring Soon</a>
+            <a href="/watchlist" class="chip">⭐ My Watchlist</a>
+            <a href="/trends" class="chip">📊 AI Trends</a>
+            <a href="/pricing" class="chip">💳 View Pricing</a>
+          </div>
+        </div>
+       <% } %>
+
+    </div>
+
+    <!-- Ad: Rectangle -->
+    <div style="flex-shrink:0; display:none; /* shown on larger screens via JS */">
+      <div class="ad-slot ad-slot-rectangle">
+        <span class="ad-slot-label">300×250</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ AD: Banner Bottom ════════════════════════════════════ -->
+  <div class="ad-slot ad-slot-leaderboard" style="margin-top:2rem;">
+    <span class="ad-slot-label">728×90</span>
+  </div>
+</div>
+
+<div class="footer">
+  <div>⚡ InnovaShield — Patent &amp; Trademark Intelligence Platform</div>
+  <div class="footer-links">
+    <a href="/patents" class="footer-link">Patents</a>
+    <a href="/trademarks" class="footer-link">Trademarks</a>
+    <a href="/expiring" class="footer-link">Expiring</a>
+    <a href="/trends" class="footer-link">AI Trends</a>
+    <a href="/pricing" class="footer-link">Pricing</a>
+  </div>
+   <div style="margin-top:0.5rem;font-size:0.72rem;">
+     Data sourced from USPTO PatentsView API and USPTO Trademark API · Auto-synced every 6 hours
+   </div>
+</div>
+
+<script>
+function toggleTheme() {
+  const curr = document.documentElement.getAttribute('data-theme');
+  const next = curr === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+}
+
+// Animate stats counting up
+function animateStats() {
+  document.querySelectorAll('.stat-num[id]').forEach(el => {
+    const target = parseInt(el.textContent.replace(/,/g,''));
+    if (!target) return;
+    let start = 0;
+    const duration = 1500;
+    const step = target / (duration / 16);
+    const timer = setInterval(() => {
+      start = Math.min(start + step, target);
+      el.textContent = Math.floor(start).toLocaleString();
+      if (start >= target) clearInterval(timer);
+    }, 16);
+  });
+}
+
+// Show/hide ad elements depending on screen width
+function updateAds() {
+  const adEl = document.querySelector('[style*="flex-shrink:0"]');
+  if (adEl) {
+    adEl.style.display = window.innerWidth > 1100 ? 'block' : 'none';
+  }
+}
+
+// PJAX navigation for explore chips
+document.addEventListener('click', function(e) {
+  const link = e.target.closest('a[data-pjax]');
+  if (!link) return;
+  e.preventDefault();
+
+  const url = link.href;
+  const scrollY = window.scrollY;
+
+  fetch(url, {
+    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+  })
+  .then(response => {
+    if (!response.ok) throw new Error('Network response was not ok');
+    return response.text();
+  })
+  .then(html => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const newMain = doc.getElementById('main-content');
+    if (!newMain) {
+      window.location.href = url;
+      return;
+    }
+    const currentMain = document.getElementById('main-content');
+    if (currentMain) {
+      currentMain.replaceWith(newMain);
+    }
+    window.history.pushState({}, '', url);
+    window.scrollTo(0, scrollY);
+    animateStats();
+    updateAds();
+  })
+  .catch(err => {
+    console.error('PJAX navigation failed:', err);
+    window.location.href = url;
+  });
+});
+
+// Handle back/forward navigation (full reload)
+window.addEventListener('popstate', function() {
+  window.location.reload();
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  const t = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+
+  updateAds();
+  animateStats();
+});
+</script>
+
+</body>
+</html>

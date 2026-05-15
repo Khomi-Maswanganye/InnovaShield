@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>InnovaShield – Admin Dashboard</title>
+  <link rel="stylesheet" href="/style.css"/>
+  <script>(function(){ document.documentElement.setAttribute('data-theme', localStorage.getItem('theme')||'dark'); })();</script>
+  <style>
+    .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+    .stat-card { background: var(--bg-1); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center; }
+    .stat-number { font-size: 2.5rem; font-weight: 700; color: var(--accent); margin-bottom: 0.5rem; }
+    .stat-label { color: var(--text-2); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    .recent-activity { margin-top: 2rem; }
+    .activity-item { padding: 1rem; border-bottom: 1px solid var(--border); }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-time { color: var(--text-3); font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+<%- include('_nav', { active: 'dashboard' }) %>
+<div class="container">
+  <div class="page-header">
+    <h1>📊 Admin Dashboard</h1>
+    <p>System overview and management controls.</p>
+  </div>
+
+  <div class="dashboard-grid">
+    <div class="stat-card">
+      <div class="stat-number"><%= stats.totalPatents %></div>
+      <div class="stat-label">Total Patents</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number"><%= stats.totalTrademarks %></div>
+      <div class="stat-label">Total Trademarks</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number"><%= stats.totalUsers %></div>
+      <div class="stat-label">Registered Users</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number"><%= stats.activeWatchlist %></div>
+      <div class="stat-label">Active Watchlist Items</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number"><%= stats.expiringSoon %></div>
+      <div class="stat-label">Expiring Soon</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number"><%= stats.lastSync %></div>
+      <div class="stat-label">Days Since Last Sync</div>
+    </div>
+  </div>
+
+  <div class="dashboard-grid">
+    <div class="stat-card">
+      <div class="stat-number"><%= stats.patentActive %></div>
+      <div class="stat-label">Active Patents</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number"><%= stats.patentExpired %></div>
+      <div class="stat-label">Expired Patents</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number"><%= stats.trademarkActive %></div>
+      <div class="stat-label">Active Trademarks</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number"><%= stats.trademarkExpired %></div>
+      <div class="stat-label">Expired Trademarks</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🔄 System Status</h2>
+    <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr;">
+      <div>
+        <h3>Database Connection</h3>
+        <p style="color: var(--success);">✅ Connected</p>
+      </div>
+      <div>
+        <h3>Last Sync</h3>
+        <p><%= lastSyncTime ? new Date(lastSyncTime).toLocaleString() : 'Never' %></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📑 Generate Admin Report</h2>
+    <p>Reports are generated for the current admin user by default and can be exported to CSV or PDF.</p>
+    <form method="GET" action="/admin" class="report-form" style="display:grid; gap:1rem;">
+      <input type="hidden" name="generate_report" value="1" />
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:1rem;">
+        <label>
+          Date From
+          <input type="date" name="date_from" value="<%= reportFilters.dateFrom || reportFilters.defaultFrom %>" />
+        </label>
+        <label>
+          Date To
+          <input type="date" name="date_to" value="<%= reportFilters.dateTo || reportFilters.defaultTo %>" />
+        </label>
+        <label>
+          Report Type
+          <select name="report_type">
+            <option value="all" <%= reportFilters.reportType === 'all' ? 'selected' : '' %>>All Records</option>
+            <option value="patent" <%= reportFilters.reportType === 'patent' ? 'selected' : '' %>>Patents</option>
+            <option value="trademark" <%= reportFilters.reportType === 'trademark' ? 'selected' : '' %>>Trademarks</option>
+          </select>
+        </label>
+        <label>
+          Status
+          <select name="status">
+            <option value="all" <%= reportFilters.reportStatus === 'all' ? 'selected' : '' %>>All</option>
+            <option value="Active" <%= reportFilters.reportStatus === 'Active' ? 'selected' : '' %>>Active</option>
+            <option value="Expired" <%= reportFilters.reportStatus === 'Expired' ? 'selected' : '' %>>Expired</option>
+          </select>
+        </label>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:0.75rem; margin-top:1rem;">
+        <button type="submit" class="btn btn-primary">Generate Report</button>
+        <a href="/admin/report/export/csv?date_from=<%= reportFilters.dateFrom || reportFilters.defaultFrom %>&date_to=<%= reportFilters.dateTo || reportFilters.defaultTo %>&report_type=<%= reportFilters.reportType %>&status=<%= reportFilters.reportStatus %>" class="btn btn-secondary">Export CSV</a>
+        <a href="/admin/report/export/pdf?date_from=<%= reportFilters.dateFrom || reportFilters.defaultFrom %>&date_to=<%= reportFilters.dateTo || reportFilters.defaultTo %>&report_type=<%= reportFilters.reportType %>&status=<%= reportFilters.reportStatus %>" class="btn btn-secondary">Export PDF</a>
+      </div>
+    </form>
+    <% if (reportSummary) { %>
+    <div style="margin-top:1rem; padding:1rem; background: var(--bg-1); border:1px solid var(--border); border-radius:12px;">
+      <strong>Report generated by:</strong> <%= reportSummary.generatedBy %><br>
+      <strong>Range:</strong> <%= reportSummary.dateFrom %> to <%= reportSummary.dateTo %><br>
+      <strong>Type:</strong> <%= reportSummary.reportType %> · <strong>Status:</strong> <%= reportSummary.reportStatus %><br>
+      <strong>Rows:</strong> <%= reportSummary.rowCount %>
+    </div>
+    <% } %>
+    <% if (reportSummary) { %>
+    <div style="margin-top:1rem; display:grid; gap:1rem;">
+      <div class="card">
+        <h3>User Summary</h3>
+        <p>Total users: <strong><%= reportSummary.userCount %></strong></p>
+        <ul>
+          <% reportSummary.userRoles.forEach(role => { %>
+          <li><strong><%= role.role %></strong>: <%= role.count %></li>
+          <% }) %>
+        </ul>
+      </div>
+      <% if (reportSummary.patentSummary) { %>
+      <div class="card">
+        <h3>Patent Summary</h3>
+        <p>Total patents created in range: <strong><%= reportSummary.patentSummary.total %></strong></p>
+        <p>Active: <strong><%= reportSummary.patentSummary.active %></strong></p>
+        <p>Expired: <strong><%= reportSummary.patentSummary.expired %></strong></p>
+        <p>Expiring soon: <strong><%= reportSummary.patentSummary.expiringSoon %></strong></p>
+      </div>
+      <% } %>
+      <% if (reportSummary.trademarkSummary) { %>
+      <div class="card">
+        <h3>Trademark Summary</h3>
+        <p>Total trademarks created in range: <strong><%= reportSummary.trademarkSummary.total %></strong></p>
+        <p>Active: <strong><%= reportSummary.trademarkSummary.active %></strong></p>
+        <p>Expired: <strong><%= reportSummary.trademarkSummary.expired %></strong></p>
+        <p>Expiring soon: <strong><%= reportSummary.trademarkSummary.expiringSoon %></strong></p>
+      </div>
+      <% } %>
+    </div>
+    <% } %>
+  </div>
+
+  <div class="recent-activity card">
+    <h2>📋 Quick Actions</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+      <a href="/admin/users" class="btn btn-primary">👥 Manage Users</a>
+      <a href="/patents" class="btn btn-secondary">📄 View Patents</a>
+      <a href="/trademarks" class="btn btn-secondary">™ View Trademarks</a>
+      <a href="/trends" class="btn btn-secondary">📈 AI Trends</a>
+      <a href="/alerts" class="btn btn-secondary">🔔 System Alerts</a>
+      <button onclick="runSync()" class="btn btn-accent">🔄 Run Sync</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function runSync() {
+  if (confirm('Run data synchronization now?')) {
+    fetch('/api/sync', { method: 'POST' })
+      .then(r => r.json())
+      .then(data => alert('Sync completed! ' + JSON.stringify(data)))
+      .catch(e => alert('Sync failed: ' + e.message));
+  }
+}
+</script>
+</body>
+</html>

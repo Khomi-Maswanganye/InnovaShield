@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>InnovaShield – AI Intelligence</title>
+  <link rel="stylesheet" href="/style.css"/>
+  <script>
+    (function(){ 
+      const t = localStorage.getItem('theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+  <style>
+    /* INTELLIGENCE HERO */
+    .intel-hero {
+      background: linear-gradient(135deg, rgba(79,142,247,0.08) 0%, rgba(56,189,248,0.05) 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 3rem 2rem; text-align: center;
+      position: relative; overflow: hidden;
+    }
+    .intel-hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 60% 80% at 50% 0%, rgba(79,142,247,0.1) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .intel-eyebrow {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem; letter-spacing: 3px;
+      text-transform: uppercase; color: var(--accent);
+      margin-bottom: 0.75rem; opacity: 0.9;
+    }
+    .intel-hero h1 {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 800; letter-spacing: -1.5px;
+      margin-bottom: 0.75rem;
+    }
+    .intel-hero h1 span {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .intel-hero p { color: var(--text-3); font-size: 1rem; max-width: 500px; margin: 0 auto 1.5rem; }
+
+    .intel-meta {
+      display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap;
+    }
+    .intel-meta-item {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.82rem; color: var(--text-3);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .intel-meta-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    /* GENERATE BUTTON */
+    .generate-section {
+      text-align: center; padding: 2.5rem 2rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .btn-generate {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #fff; border: none; border-radius: 14px;
+      padding: 1rem 2.5rem; font-size: 1rem; font-weight: 700;
+      cursor: pointer; transition: all 0.2s;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      box-shadow: 0 4px 20px var(--accent-glow);
+      display: inline-flex; align-items: center; gap: 0.75rem;
+    }
+    .btn-generate:hover { transform: translateY(-2px); box-shadow: 0 8px 32px var(--accent-glow); }
+    .btn-generate:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .generate-hint { color: var(--text-3); font-size: 0.85rem; margin-top: 0.75rem; }
+
+    /* LOADING */
+    .loading-state {
+      text-align: center; padding: 3rem;
+      display: none;
+    }
+    .loading-spinner {
+      width: 40px; height: 40px; border-radius: 50%;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { color: var(--text-3); font-size: 0.9rem; }
+    .loading-steps { margin-top: 0.5rem; }
+    .loading-step {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem; color: var(--text-3);
+      opacity: 0; animation: fadeIn 0.5s ease forwards;
+    }
+
+    /* NEWS FEED */
+    .news-item {
+      display: flex; gap: 1.2rem; padding: 1.2rem 0;
+      border-bottom: 1px solid var(--border);
+      animation: fadeUp 0.4s ease both;
+    }
+    .news-item:last-child { border-bottom: none; }
+    .news-tag {
+      flex-shrink: 0; padding: 0.2rem 0.6rem;
+      border-radius: 6px; font-size: 0.68rem;
+      font-weight: 700; letter-spacing: 0.05em;
+      text-transform: uppercase; height: fit-content;
+      font-family: 'JetBrains Mono', monospace;
+      margin-top: 0.2rem;
+    }
+    .tag-legal   { background: rgba(139,92,246,0.15); color: #a78bfa; }
+    .tag-tech    { background: rgba(79,142,247,0.15); color: var(--accent); }
+    .tag-crypto  { background: rgba(251,191,36,0.15); color: var(--warning); }
+    .tag-politics{ background: rgba(248,113,113,0.15); color: #f87171; }
+    .tag-market  { background: rgba(52,211,153,0.15); color: var(--success); }
+
+    .news-content { flex: 1; }
+    .news-title { font-weight: 700; font-size: 0.95rem; color: var(--text); margin-bottom: 0.4rem; line-height: 1.4; }
+    .news-summary { font-size: 0.85rem; color: var(--text-3); line-height: 1.6; margin-bottom: 0.5rem; }
+    .news-impact {
+      font-size: 0.8rem; color: var(--accent);
+      font-family: 'JetBrains Mono', monospace;
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    .news-impact::before { content: '→'; }
+
+    /* OPPORTUNITIES */
+    .opp-item {
+      padding: 1.1rem; background: var(--bg-2);
+      border-radius: 12px; border: 1px solid var(--border);
+      margin-bottom: 0.75rem; transition: all 0.2s;
+      animation: fadeUp 0.4s ease both;
+    }
+    .opp-item:hover { border-color: var(--border-2); transform: translateX(4px); }
+    .opp-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 0.5rem; }
+    .opp-title { font-weight: 700; font-size: 0.95rem; color: var(--text); }
+    .opp-potential {
+      flex-shrink: 0; padding: 0.15rem 0.6rem;
+      border-radius: 20px; font-size: 0.72rem; font-weight: 700;
+    }
+    .potential-high   { background: rgba(52,211,153,0.15); color: var(--success); }
+    .potential-medium { background: rgba(251,191,36,0.15); color: var(--warning); }
+    .potential-low    { background: rgba(107,114,128,0.15); color: var(--muted); }
+    .opp-desc { font-size: 0.85rem; color: var(--text-3); line-height: 1.6; margin-bottom: 0.4rem; }
+    .opp-industry {
+      font-size: 0.75rem; color: var(--accent-2);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* MARKET SIGNALS */
+    .signal-item {
+      display: flex; align-items: center; gap: 1rem;
+      padding: 0.85rem 0; border-bottom: 1px solid var(--border);
+      animation: fadeUp 0.4s ease both;
+    }
+    .signal-item:last-child { border-bottom: none; }
+    .signal-arrow { font-size: 1.1rem; flex-shrink: 0; width: 1.5rem; text-align: center; }
+    .signal-up      { color: var(--success); }
+    .signal-down    { color: #f87171; }
+    .signal-neutral { color: var(--warning); }
+    .signal-text { font-size: 0.9rem; color: var(--text-2); line-height: 1.5; }
+
+    /* EMPTY STATE */
+    .ai-empty {
+      text-align: center; padding: 3rem 1rem; color: var(--text-3);
+    }
+    .ai-empty .icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+    .ai-empty p { font-size: 0.9rem; }
+
+    /* ERROR STATE */
+    .ai-error {
+      background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.2);
+      border-radius: 12px; padding: 1rem 1.4rem;
+      color: #f87171; font-size: 0.9rem; margin-bottom: 1rem; display: none;
+    }
+  </style>
+</head>
+<body>
+
+<%- include('_nav', { active: 'trends' }) %>
+
+<!-- HERO -->
+<div class="intel-hero">
+  <p class="intel-eyebrow">AI Intelligence Engine</p>
+  <h1>IP <span>Market Intelligence</span></h1>
+  <p>Real-time insights on patents, trademarks, legal developments and business opportunities — powered by AI.</p>
+  <div class="intel-meta">
+    <div class="intel-meta-item"><div class="intel-meta-dot"></div> Live Analysis</div>
+    <div class="intel-meta-item"><div class="intel-meta-dot"></div> <%= industryStats.length %> Industries Tracked</div>
+    <div class="intel-meta-item"><div class="intel-meta-dot"></div> Auto-sync every 24hrs</div>
+  </div>
+</div>
+
+<!-- GENERATE SECTION -->
+<div class="generate-section">
+  <button class="btn-generate" onclick="generateInsights()" id="generateBtn">
+    <span>🧠</span> Generate AI Intelligence Report
+  </button>
+  <div class="generate-hint">Analyzes your patent database + current IP market trends</div>
+</div>
+
+<div class="container">
+
+  <!-- ERROR -->
+  <div class="ai-error" id="aiError">⚠️ Failed to generate insights. Please try again.</div>
+
+  <!-- LOADING -->
+  <div class="loading-state" id="loadingState">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">AI is analyzing patent trends...</div>
+    <div class="loading-steps">
+      <div class="loading-step" style="animation-delay: 0.5s">📊 Scanning industry patterns...</div>
+      <div class="loading-step" style="animation-delay: 1.5s">🔍 Identifying market signals...</div>
+      <div class="loading-step" style="animation-delay: 2.5s">💡 Generating opportunities...</div>
+      <div class="loading-step" style="animation-delay: 3.5s">📰 Compiling IP news feed...</div>
+    </div>
+  </div>
+
+  <!-- AI RESULTS -->
+  <div id="aiResults" style="display:none;">
+    <div class="grid-2" style="margin-bottom: 1.5rem;">
+
+      <!-- NEWS FEED -->
+      <div class="card">
+        <h2>📰 IP News & Legal Updates</h2>
+        <div id="newsFeed">
+          <div class="ai-empty"><div class="icon">📰</div><p>Generate report to see latest IP news</p></div>
+        </div>
+      </div>
+
+      <!-- OPPORTUNITIES -->
+      <div class="card">
+        <h2>💡 Business Opportunities</h2>
+        <div id="opportunities">
+          <div class="ai-empty"><div class="icon">💡</div><p>Generate report to discover opportunities</p></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- MARKET SIGNALS -->
+    <div class="card" style="margin-bottom: 2rem;">
+      <h2>📡 Market Signals</h2>
+      <div id="marketSignals">
+        <div class="ai-empty"><div class="icon">📡</div><p>Generate report to see market signals</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATIC CHARTS (always visible) -->
+  <div class="grid-2">
+    <div class="card">
+      <h2>📊 Patents by Industry</h2>
+      <%
+        const maxIndustry = industryStats.length > 0 ? industryStats[0].total : 1;
+      %>
+      <% industryStats.forEach(i => { %>
+      <div class="bar-item">
+        <div class="bar-label">
+          <span><%= i.industry || 'Unknown' %></span>
+          <span><%= i.total %> patents</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width: <%= Math.round((i.total / maxIndustry) * 100) %>%"></div>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+
+    <div class="card">
+      <h2>📋 Patents by Status</h2>
+      <div class="status-grid">
+        <% statusStats.forEach(s => { %>
+        <div class="status-item <%= s.status ? s.status.toLowerCase() : '' %>">
+          <div class="count"><%= s.total %></div>
+          <div class="label"><%= s.status %></div>
+        </div>
+        <% }) %>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h2>🏆 Top Patent Owners</h2>
+      <% topOwners.forEach((o, index) => { %>
+      <div class="owner-item">
+        <span class="owner-rank">#<%= index + 1 %></span>
+        <span class="owner-name"><%= o.owner %></span>
+        <span class="owner-count"><%= o.total %> patents</span>
+      </div>
+      <% }) %>
+    </div>
+
+    <div class="card">
+      <h2>🔍 Quick Stats</h2>
+      <ul class="insight-list">
+        <li><span class="dot"></span> Most active industry: <strong><%= industryStats[0] ? industryStats[0].industry : 'N/A' %></strong> with <%= industryStats[0] ? industryStats[0].total : 0 %> patents</li>
+        <li><span class="dot"></span> Top patent holder: <strong><%= topOwners[0] ? topOwners[0].owner : 'N/A' %></strong> with <%= topOwners[0] ? topOwners[0].total : 0 %> patents</li>
+        <li><span class="dot"></span> <%= industryStats.length %> industries represented in the database</li>
+        <li><span class="dot"></span> Monitor expiring patents to avoid lapses in IP protection</li>
+        <li><span class="dot"></span> Regular ownership tracking detects unauthorized transfers</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  ⚡ InnovaShield — Patent & Trademark Intelligence Platform · AI powered by Claude
+</div>
+
+<script>
+  (function(){
+    const t = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', t);
+  })();
+
+  function toggleTheme() {
+    const curr = document.documentElement.getAttribute('data-theme');
+    const next = curr === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    document.querySelector('.theme-toggle').textContent = next === 'dark' ? '◑' : '●';
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const t = localStorage.getItem('theme') || 'dark';
+    const btn = document.querySelector('.theme-toggle');
+    if (btn) btn.textContent = t === 'dark' ? '◑' : '●';
+  });
+
+  // INDUSTRY DATA for AI
+  const industryStats = <%- JSON.stringify(industryStats) %>;
+  const topOwners = <%- JSON.stringify(topOwners) %>;
+
+  async function generateInsights() {
+    const btn = document.getElementById('generateBtn');
+    const loading = document.getElementById('loadingState');
+    const results = document.getElementById('aiResults');
+    const error = document.getElementById('aiError');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span>⏳</span> Generating...';
+    loading.style.display = 'block';
+    results.style.display = 'none';
+    error.style.display = 'none';
+
+    try {
+      const response = await fetch('/api/ai-insights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ industryStats, topOwners })
+      });
+
+      if (!response.ok) throw new Error('API failed');
+
+      const data = await response.json();
+
+      loading.style.display = 'none';
+      results.style.display = 'block';
+
+      // RENDER NEWS
+      const newsFeed = document.getElementById('newsFeed');
+      newsFeed.innerHTML = data.news.map((n, i) => `
+        <div class="news-item" style="animation-delay: ${i * 0.1}s">
+          <span class="news-tag tag-${n.tag.toLowerCase()}">${n.tag}</span>
+          <div class="news-content">
+            <div class="news-title">${n.title}</div>
+            <div class="news-summary">${n.summary}</div>
+            <div class="news-impact">${n.impact}</div>
+          </div>
+        </div>
+      `).join('');
+
+      // RENDER OPPORTUNITIES
+      const opps = document.getElementById('opportunities');
+      opps.innerHTML = data.opportunities.map((o, i) => `
+        <div class="opp-item" style="animation-delay: ${i * 0.1}s">
+          <div class="opp-header">
+            <div class="opp-title">${o.title}</div>
+            <span class="opp-potential potential-${o.potential.toLowerCase()}">${o.potential}</span>
+          </div>
+          <div class="opp-desc">${o.description}</div>
+          <div class="opp-industry">🏭 ${o.industry}</div>
+        </div>
+      `).join('');
+
+      // RENDER MARKET SIGNALS
+      const signals = document.getElementById('marketSignals');
+      const signalIcons = { up: '↑', down: '↓', neutral: '→' };
+      signals.innerHTML = `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 0 2rem;">
+        ${data.market_signals.map((s, i) => `
+          <div class="signal-item" style="animation-delay: ${i * 0.1}s">
+            <span class="signal-arrow signal-${s.direction}">${signalIcons[s.direction] || '→'}</span>
+            <span class="signal-text">${s.signal}</span>
+          </div>
+        `).join('')}
+      </div>`;
+
+      btn.innerHTML = '<span>🔄</span> Regenerate Report';
+      btn.disabled = false;
+
+    } catch (err) {
+      loading.style.display = 'none';
+      error.style.display = 'block';
+      btn.innerHTML = '<span>🧠</span> Generate AI Intelligence Report';
+      btn.disabled = false;
+    }
+  }
+</script>
+
+</body>
+</html>

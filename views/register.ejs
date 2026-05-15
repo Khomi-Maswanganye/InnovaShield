@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>InnovaShield – Create User</title>
+  <link rel="stylesheet" href="/style.css"/>
+  <script>(function(){ document.documentElement.setAttribute('data-theme', localStorage.getItem('theme')||'dark'); })();</script>
+  <style>
+    .auth-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+    .auth-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 2.5rem; width: 100%; max-width: 480px; }
+    .auth-logo { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem; }
+    .auth-logo svg { width: 28px; height: 28px; stroke: var(--accent); fill: none; stroke-width: 1.5; }
+    .auth-logo span { font-size: 1.2rem; font-weight: 700; }
+    .auth-logo span span { color: var(--accent); }
+    .back-link { font-size: 0.85rem; color: var(--accent); margin-bottom: 1rem; display: block; }
+    .auth-title { font-size: 1.3rem; font-weight: 700; margin-bottom: 1.5rem; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 0.4rem; color: var(--text-2); }
+    .form-group label span { color: #f87171; }
+    .form-group input, .form-group select { width: 100%; padding: 0.6rem 0.9rem; background: var(--input-bg, var(--bg-2)); border: 1px solid var(--border); border-radius: 8px; color: var(--text-1); font-size: 0.95rem; box-sizing: border-box; }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--accent); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .role-info { font-size: 0.75rem; color: var(--text-3); margin-top: 0.3rem; }
+    .auth-btn { width: 100%; padding: 0.75rem; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 0.5rem; }
+    .auth-btn:hover { opacity: 0.9; }
+    .auth-errors { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1.25rem; }
+    .auth-errors p { color: #f87171; font-size: 0.875rem; margin: 0.2rem 0; }
+  </style>
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <svg viewBox="0 0 24 24"><path d="M12 2L3 7l9 5 9-5-9-5z"/><path d="M3 17l9 5 9-5"/><path d="M3 12l9 5 9-5"/></svg>
+      <span>Innova<span>Shield</span></span>
+    </div>
+    <a href="/login" class="back-link">← Back to Login</a>
+    <h1 class="auth-title">Create Account</h1>
+    <p style="font-size:0.85rem;color:var(--text-2);margin-bottom:1.25rem;">New accounts start with <strong>Viewer</strong> access. An admin can promote your role after you sign up.</p>
+
+    <% if (errors && errors.length) { %>
+    <div class="auth-errors">
+      <% errors.forEach(e => { %><p>⚠ <%= e %></p><% }) %>
+    </div>
+    <% } %>
+
+    <form action="/register" method="POST" id="regForm">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>"/>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Username <span>*</span></label>
+          <input type="text" name="username" value="<%= formData.username || '' %>" maxlength="50" required placeholder="jsmith"/>
+        </div>
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" name="full_name" value="<%= formData.full_name || '' %>" maxlength="255" placeholder="John Smith"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Email Address <span>*</span></label>
+        <input type="email" name="email" value="<%= formData.email || '' %>" maxlength="255" required placeholder="john@company.com"/>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Password <span>*</span></label>
+          <input type="password" name="password" minlength="6" maxlength="100" required placeholder="Min. 6 characters"/>
+        </div>
+        <div class="form-group">
+          <label>Confirm Password <span>*</span></label>
+          <input type="password" name="confirm_password" minlength="6" maxlength="100" required placeholder="Repeat password"/>
+        </div>
+      </div>
+      <button type="submit" class="auth-btn">Create Account →</button>
+    </form>
+  </div>
+</div>
+</body>
+</html>
