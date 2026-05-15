@@ -51,11 +51,11 @@
       <div class="form-row">
         <div class="form-group">
           <label>Username <span>*</span></label>
-          <input type="text" name="username" value="<%= formData.username || '' %>" maxlength="50" required placeholder="jsmith"/>
+          <input type="text" name="username" value="<%= formData.username || '' %>" maxlength="50" pattern="^[a-zA-Z_]+$" title="Letters and underscores only (no numbers)" required placeholder="jsmith"/>
         </div>
         <div class="form-group">
-          <label>Full Name</label>
-          <input type="text" name="full_name" value="<%= formData.full_name || '' %>" maxlength="255" placeholder="John Smith"/>
+          <label>Full Name <span>*</span></label>
+          <input type="text" name="full_name" value="<%= formData.full_name || '' %>" maxlength="255" pattern="^[a-zA-Z\s'-]+$" title="Letters, spaces, hyphens and apostrophes only (no numbers)" required placeholder="John Smith"/>
         </div>
       </div>
       <div class="form-group">
@@ -65,11 +65,11 @@
       <div class="form-row">
         <div class="form-group">
           <label>Password <span>*</span></label>
-          <input type="password" name="password" minlength="6" maxlength="100" required placeholder="Min. 6 characters"/>
+          <input type="password" name="password" minlength="8" maxlength="100" required placeholder="Min. 8 characters"/>
         </div>
         <div class="form-group">
           <label>Confirm Password <span>*</span></label>
-          <input type="password" name="confirm_password" minlength="6" maxlength="100" required placeholder="Repeat password"/>
+          <input type="password" name="confirm_password" minlength="8" maxlength="100" required placeholder="Repeat password"/>
         </div>
       </div>
       <button type="submit" class="auth-btn">Create Account →</button>

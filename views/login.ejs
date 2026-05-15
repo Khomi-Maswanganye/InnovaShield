@@ -24,6 +24,7 @@
                                          .auth-btn { width: 100%; padding: 0.75rem; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 0.5rem; }   
                                            .auth-btn:hover { opacity: 0.9; }     .auth-errors { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1.25rem; }   
                                              .auth-errors p { color: #f87171; font-size: 0.875rem; margin: 0.2rem 0; }  
+                                             .back-link { display: block; margin-bottom: 1rem; color: var(--accent); font-size: 0.95rem; text-decoration: none; }  
                                                 .default-creds { background: rgba(79,142,247,0.08); border: 1px solid rgba(79,142,247,0.2); border-radius: 8px; padding: 0.75rem 1rem; margin-top: 1.25rem; font-size: 0.8rem; color: var(--text-3); }  
                                                    .default-creds strong { color: var(--accent); }  
                                                     </style> 
@@ -41,6 +42,7 @@
                                                                          <span>Innova<span>Shield</span>
                                                                         </span>    
                                                                      </div>  
+                                                                     <a href="/" class="back-link">← Back to Home</a>
                                                                         <h1 class="auth-title">Sign in to your account</h1>  
                                                                            <p class="auth-sub">Patent &amp; Trademark Intelligence Platform</p>  
                                                                                <% if (errors && errors.length) { %>   
@@ -52,7 +54,7 @@
                                                                                                     <input type="hidden" name="next" value="<%= next %>"/>   
                                                                                                         <div class="form-group">     
                                                                                                                 <label>Username or Email</label>    
-                                                                                                                     <input type="text" name="username" autocomplete="username" required placeholder="admin"/>  
+                                                                                                                     <input type="text" name="username" autocomplete="username" required placeholder="username"/>  
                                                                                                                          </div>    
                                                                                                                             <div class="form-group">      
                                                                                                                                    <label>Password</label>    
@@ -61,7 +63,7 @@
                                                                                                                                        <button type="submit" class="auth-btn">Sign In →</button>   
                                                                                                                                       </form>     
                                                                                                                                        <div class="default-creds">    
-                                                                                                                                           Use your assigned credentials. Contact an administrator if you need access. 
+                                                                                                                                           Forgot your credentials? Please contact your administrator at <strong>admin@innovashield.com</strong>. 
                                                                                                                                             </div>   
                                                                                                                                         </div>
                                                                                                                                      </div>

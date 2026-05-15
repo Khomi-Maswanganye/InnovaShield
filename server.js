@@ -463,16 +463,19 @@ app.post('/register', async (req, res) => {
     if (!username || !username.trim()) errors.push('Username is required.');
     else if (username.trim().length < 3) errors.push('Username must be at least 3 characters.');
     else if (username.trim().length > 50) errors.push('Username must be under 50 characters.');
-    else if (!/^[a-zA-Z0-9_]+$/.test(username.trim())) errors.push('Username: letters, numbers and underscores only.');
+    else if (!/^[a-zA-Z_]+$/.test(username.trim())) errors.push('Username: letters and underscores only (no numbers).');
     if (!email || !email.trim()) errors.push('Email is required.');
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) errors.push('Please enter a valid email address.');
+    if (!full_name || !full_name.trim()) errors.push('Full name is required.');
+    else if (full_name.trim().length > 255) errors.push('Full name must be under 255 characters.');
+    else if (!/^[a-zA-Z\s'-]+$/.test(full_name.trim())) errors.push('Full name: letters, spaces, hyphens and apostrophes only (no numbers).');
     if (!password) errors.push('Password is required.');
-    else if (password.length < 6) errors.push('Password must be at least 6 characters.');
+    else if (password.length < 8) errors.push('Password must be at least 8 characters.');
     else if (password.length > 100) errors.push('Password must be under 100 characters.');
     if (password !== confirm_password) errors.push('Passwords do not match.');
     if (errors.length) return res.render('register', { errors, formData: req.body });
     try {
-        const existing = await dbQ('SELECT user_id FROM users WHERE username=? OR email=?', [username.trim(), email.trim()]);
+        const existing = await dbQ('SELECT user_id FROM users WHERE (username=? OR email=?) AND user_id<>0', [username.trim(), email.trim()]);
         if (existing.length) return res.render('register', { errors: ['Username or email already exists.'], formData: req.body });
         const hash = await bcrypt.hash(password, 10);
         await dbQ('INSERT INTO users (username, email, password_hash, full_name, role) VALUES (?,?,?,?,?)',
@@ -482,6 +485,108 @@ app.post('/register', async (req, res) => {
     } catch(e) {
         console.error('Register error:', e);
         res.render('register', { errors: ['An error occurred. Please try again.'], formData: req.body });
+    }
+});
+
+app.get('/account', requireLogin, async (req, res) => {
+    try {
+        const rows = await dbQ('SELECT user_id, username, email, full_name, role FROM users WHERE user_id=?', [req.session.user.user_id]);
+        if (!rows.length) return res.redirect('/logout');
+        res.render('account', { user: rows[0], errors: req.flash('error'), success: req.flash('success') });
+    } catch(e) {
+        console.error('Account load error:', e);
+        res.render('error', { message: 'Could not load account details.' });
+    }
+});
+
+app.post('/account', requireLogin, async (req, res) => {
+    const { username, email, full_name, current_password, new_password, confirm_new_password } = req.body;
+    const errors = [];
+    const trimmedUsername = String(username || '').trim();
+    const trimmedEmail = String(email || '').trim();
+    const trimmedFullName = String(full_name || '').trim();
+
+    if (!trimmedUsername) errors.push('Username is required.');
+    else if (trimmedUsername.length < 3) errors.push('Username must be at least 3 characters.');
+    else if (trimmedUsername.length > 50) errors.push('Username must be under 50 characters.');
+    else if (!/^[a-zA-Z_]+$/.test(trimmedUsername)) errors.push('Username: letters and underscores only (no numbers).');
+    if (!trimmedEmail) errors.push('Email is required.');
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) errors.push('Please enter a valid email address.');
+    if (trimmedFullName && !/^[a-zA-Z\s'-]+$/.test(trimmedFullName)) errors.push('Full name: letters, spaces, hyphens and apostrophes only (no numbers).');
+    if (!current_password) errors.push('Current password is required to save changes.');
+    if (new_password) {
+        if (new_password.length < 8) errors.push('New password must be at least 8 characters.');
+        if (new_password !== confirm_new_password) errors.push('New passwords do not match.');
+    }
+
+    if (errors.length) {
+        req.flash('error', errors);
+        return res.redirect('/account');
+    }
+
+    try {
+        const rows = await dbQ('SELECT * FROM users WHERE user_id=?', [req.session.user.user_id]);
+        if (!rows.length) return res.redirect('/logout');
+        const user = rows[0];
+        const passwordMatch = await bcrypt.compare(current_password, user.password_hash);
+        if (!passwordMatch) {
+            req.flash('error', ['Current password is incorrect.']);
+            return res.redirect('/account');
+        }
+
+        const existing = await dbQ('SELECT user_id FROM users WHERE (username=? OR email=?) AND user_id<>?', [trimmedUsername, trimmedEmail, user.user_id]);
+        if (existing.length) {
+            req.flash('error', ['Username or email already exists.']);
+            return res.redirect('/account');
+        }
+
+        const updates = [trimmedUsername, trimmedEmail, trimmedFullName];
+        let updateSql = 'UPDATE users SET username=?, email=?, full_name=?';
+        if (new_password) {
+            const newHash = await bcrypt.hash(new_password, 10);
+            updateSql += ', password_hash=?';
+            updates.push(newHash);
+        }
+        updateSql += ' WHERE user_id=?';
+        updates.push(user.user_id);
+
+        await dbQ(updateSql, updates);
+        req.session.user.username = trimmedUsername;
+        req.session.user.email = trimmedEmail;
+        req.session.user.full_name = trimmedFullName;
+        req.flash('success', 'Account updated successfully.');
+        res.redirect('/account');
+    } catch(e) {
+        console.error('Account update error:', e);
+        req.flash('error', ['An error occurred updating your account. Please try again.']);
+        res.redirect('/account');
+    }
+});
+
+app.post('/account/delete', requireLogin, async (req, res) => {
+    const { current_password } = req.body;
+    if (!current_password) {
+        req.flash('error', ['Current password is required to delete your account.']);
+        return res.redirect('/account');
+    }
+    try {
+        const rows = await dbQ('SELECT * FROM users WHERE user_id=?', [req.session.user.user_id]);
+        if (!rows.length) return res.redirect('/logout');
+        const user = rows[0];
+        const passwordMatch = await bcrypt.compare(current_password, user.password_hash);
+        if (!passwordMatch) {
+            req.flash('error', ['Current password is incorrect.']);
+            return res.redirect('/account');
+        }
+
+        await dbQ('DELETE FROM users WHERE user_id=?', [user.user_id]);
+        req.session.destroy(() => {
+            res.redirect('/login?deleted=1');
+        });
+    } catch(e) {
+        console.error('Account delete error:', e);
+        req.flash('error', ['Could not delete your account. Please try again later.']);
+        res.redirect('/account');
     }
 });
 
@@ -666,7 +771,7 @@ app.get('/admin/report/export/pdf', requireLogin, requireRole('Admin'), async (r
         };
 
         // Header
-        doc.fillColor(colors.primary).fontSize(24).font('Helvetica-Bold').text('📊 InnovaShield Admin Report', 50, 50);
+        doc.fillColor(colors.primary).fontSize(24).font('Helvetica-Bold').text(' InnovaShield Admin Report', 50, 50);
         doc.moveDown(0.5);
 
         // Report metadata
@@ -678,7 +783,7 @@ app.get('/admin/report/export/pdf', requireLogin, requireRole('Admin'), async (r
         doc.moveDown(1);
 
         // User Summary Table
-        doc.fillColor(colors.primary).fontSize(16).font('Helvetica-Bold').text('👥 User Summary', 50, doc.y);
+        doc.fillColor(colors.primary).fontSize(16).font('Helvetica-Bold').text(' User Summary', 50, doc.y);
         doc.moveDown(0.5);
 
         // Table header
@@ -715,7 +820,7 @@ app.get('/admin/report/export/pdf', requireLogin, requireRole('Admin'), async (r
 
         // Patent Summary
         if (patentSummary) {
-            doc.fillColor(colors.primary).fontSize(16).font('Helvetica-Bold').text('📋 Patent Summary', 50, doc.y);
+            doc.fillColor(colors.primary).fontSize(16).font('Helvetica-Bold').text(' Patent Summary', 50, doc.y);
             doc.moveDown(0.5);
 
             const patentTableTop = doc.y;
@@ -752,7 +857,7 @@ app.get('/admin/report/export/pdf', requireLogin, requireRole('Admin'), async (r
 
         // Trademark Summary
         if (trademarkSummary) {
-            doc.fillColor(colors.primary).fontSize(16).font('Helvetica-Bold').text('™️ Trademark Summary', 50, doc.y);
+            doc.fillColor(colors.primary).fontSize(16).font('Helvetica-Bold').text(' Trademark Summary', 50, doc.y);
             doc.moveDown(0.5);
 
             const trademarkTableTop = doc.y;
@@ -848,7 +953,7 @@ app.get('/', async (req, res) => {
             dbQ('SELECT COUNT(*) as c FROM patents WHERE expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 90 DAY) AND status="Active"')
         ]);
         const stats = { patents: p[0].c, trademarks: t[0].c, active: a[0].c, expiring: ex[0].c };
-        if (!query && !industry) return res.render('index', { results: [], query: '', industry: '', searchType, sortBy, industries, stats, lastSyncTime, lastSyncCounts });
+        if (!query && !industry) return res.render('index', { results: [], query: '', industry: '', searchType, sortBy, industries, stats, lastSyncTime, lastSyncCounts, isAuthenticated: !!req.session.user });
         const pParams = [], tmParams = [];
         let patentSql = "SELECT *, 'Patent' as record_type, patent_number as display_number, title as display_title FROM patents WHERE 1=1";
         let tmSql = "SELECT *, 'Trademark' as record_type, trademark_number as display_number, name as display_title, NULL as filing_date FROM trademarks WHERE 1=1";
@@ -862,7 +967,7 @@ app.get('/', async (req, res) => {
         const patents = searchType !== 'trademarks' ? await dbQ(patentSql, pParams) : [];
         const tms = searchType !== 'patents' ? await dbQ(tmSql, tmParams) : [];
         const results = [...patents, ...tms].sort((a, b) => (a[orderBy] > b[orderBy]) ? 1 : -1);
-        res.render('index', { results, query, industry, searchType, sortBy, industries, stats, lastSyncTime, lastSyncCounts });
+        res.render('index', { results, query, industry, searchType, sortBy, industries, stats, lastSyncTime, lastSyncCounts, isAuthenticated: !!req.session.user });
     } catch(e) { console.error(e); res.render('error', { message: 'Database error.' }); }
 });
 
@@ -1003,7 +1108,7 @@ app.get('/watchlist', async (req, res) => {
 });
 
 app.post('/watchlist/add', async (req, res) => {
-    const { type, patent_id, trademark_id, notes, user_id } = req.body;
+    const { type, patent_id, trademark_id, notes } = req.body;
     const errors = [];
     if (!['patent','trademark'].includes(type)) errors.push('Invalid type.');
     if (type === 'patent' && (!patent_id || !patent_id.trim())) errors.push('Please select a patent.');
@@ -1022,7 +1127,7 @@ app.post('/watchlist/add', async (req, res) => {
                 patent_id: type === 'patent' ? patent_id : null,
                 trademark_id: type === 'trademark' ? trademark_id : null,
                 notes: notes || null,
-                user_id: user_id ? user_id.trim() : 'Anonymous',
+                user_id: 'Anonymous',
                 created_at: new Date().toISOString()
             });
             return res.redirect('/watchlist?success=added');
@@ -1079,6 +1184,39 @@ app.post('/watchlist/delete/:id', requireLogin, async (req, res) => {
         await dbQ('DELETE FROM watchlist WHERE watchlist_id=?', [req.params.id]);
         res.redirect('/watchlist?success=deleted');
     } catch(e) { req.flash('error', 'Could not remove.'); res.redirect('/watchlist'); }
+});
+
+app.post('/watchlist/add-selected', requireLogin, async (req, res) => {
+    const { selected_item } = req.body;
+    if (!selected_item) {
+        req.flash('error', 'Please select an item to add to watchlist.');
+        return res.redirect('back');
+    }
+
+    const [type, id] = selected_item.split('_');
+    if (!type || !id || (type !== 'patent' && type !== 'trademark')) {
+        req.flash('error', 'Invalid selection.');
+        return res.redirect('back');
+    }
+
+    try {
+        // Check if already in watchlist
+        const existing = await dbQ('SELECT watchlist_id FROM watchlist WHERE user_id=? AND ' +
+            (type === 'patent' ? 'patent_id=?' : 'trademark_id=?'), [req.session.user.username, id]);
+        if (existing.length > 0) {
+            req.flash('error', 'This item is already in your watchlist.');
+            return res.redirect('back');
+        }
+
+        await dbQ('INSERT INTO watchlist (patent_id, trademark_id, user_id, notes) VALUES (?,?,?,?)',
+            [type === 'patent' ? id : null, type === 'trademark' ? id : null, req.session.user.username, null]);
+        req.flash('success', 'Added to watchlist!');
+        res.redirect('back');
+    } catch(e) {
+        console.error(e);
+        req.flash('error', 'Could not add to watchlist.');
+        res.redirect('back');
+    }
 });
 
 app.get('/watchlist/export/csv', requireLogin, async (req, res) => {

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>InnovaShield – My Account</title>
+  <link rel="stylesheet" href="/style.css"/>
+  <script>(function(){ document.documentElement.setAttribute('data-theme', localStorage.getItem('theme')||'dark'); })();</script>
+  <style>
+    .auth-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+    .auth-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 2.5rem; width: 100%; max-width: 520px; }
+    .auth-logo { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem; }
+    .auth-logo svg { width: 28px; height: 28px; stroke: var(--accent); fill: none; stroke-width: 1.5; }
+    .auth-logo span { font-size: 1.2rem; font-weight: 700; }
+    .auth-logo span span { color: var(--accent); }
+    .back-link { font-size: 0.85rem; color: var(--accent); margin-bottom: 1rem; display: block; }
+    .auth-title { font-size: 1.3rem; font-weight: 700; margin-bottom: 1rem; }
+    .auth-sub { font-size: 0.9rem; color: var(--text-2); margin-bottom: 1.5rem; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 0.4rem; color: var(--text-2); }
+    .form-group input { width: 100%; padding: 0.6rem 0.9rem; background: var(--input-bg, var(--bg-2)); border: 1px solid var(--border); border-radius: 8px; color: var(--text-1); font-size: 0.95rem; box-sizing: border-box; }
+    .form-group input:focus { outline: none; border-color: var(--accent); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .auth-btn { width: 100%; padding: 0.75rem; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 0.5rem; }
+    .auth-btn:hover { opacity: 0.9; }
+    .auth-errors, .auth-success { border-radius: 8px; padding: 0.85rem 1rem; margin-bottom: 1.25rem; }
+    .auth-errors { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); }
+    .auth-errors p { color: #f87171; font-size: 0.9rem; margin: 0.2rem 0; }
+    .auth-success { background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3); color: #16a34a; font-size: 0.9rem; }
+    .account-note { font-size: 0.85rem; color: var(--text-3); margin-top: 0.5rem; }
+    .delete-card { margin-top: 2rem; border: 1px solid rgba(248,113,113,0.2); background: rgba(254,226,226,0.25); border-radius: 16px; padding: 1.25rem; }
+    .delete-card h2 { margin: 0 0 0.75rem; font-size: 1.05rem; }
+    .delete-btn { width: 100%; padding: 0.75rem; background: #ef4444; color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; }
+    .delete-btn:hover { opacity: 0.95; }
+  </style>
+</head>
+<body>
+<div class="page-bg"></div>
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <svg viewBox="0 0 24 24"><path d="M12 2L3 7l9 5 9-5-9-5z"/><path d="M3 17l9 5 9-5"/><path d="M3 12l9 5 9-5"/></svg>
+      <span>Innova<span>Shield</span></span>
+    </div>
+    <a href="/" class="back-link">← Back to Dashboard</a>
+    <h1 class="auth-title">My Account</h1>
+    <p class="auth-sub">Update your profile or change your password. Account deletion is permanent.</p>
+
+    <% if (success && success.length) { %>
+      <div class="auth-success"><p>✅ <%= success[0] %></p></div>
+    <% } %>
+    <% if (errors && errors.length) { %>
+      <div class="auth-errors"><% errors.forEach(e => { %><p>⚠ <%= e %></p><% }) %></div>
+    <% } %>
+
+    <form action="/account" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>"/>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Username <span>*</span></label>
+          <input type="text" name="username" value="<%= user.username %>" maxlength="50" pattern="^[a-zA-Z_]+$" title="Letters and underscores only (no numbers)" required placeholder="Username"/>
+        </div>
+        <div class="form-group">
+          <label>Role</label>
+          <input type="text" value="<%= user.role %>" disabled />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" name="full_name" value="<%= user.full_name || '' %>" maxlength="255" pattern="^[a-zA-Z\s'-]+$" title="Letters, spaces, hyphens and apostrophes only (no numbers)" placeholder="Full name"/>
+      </div>
+      <div class="form-group">
+        <label>Email Address <span>*</span></label>
+        <input type="email" name="email" value="<%= user.email %>" maxlength="255" required placeholder="you@example.com"/>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Current Password <span>*</span></label>
+          <input type="password" name="current_password" required placeholder="Enter current password"/>
+        </div>
+        <div class="form-group">
+          <label>New Password</label>
+          <input type="password" name="new_password" minlength="8" maxlength="100" placeholder="Leave blank to keep current"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Confirm New Password</label>
+        <input type="password" name="confirm_new_password" minlength="8" maxlength="100" placeholder="Repeat new password"/>
+      </div>
+      <button type="submit" class="auth-btn">Update Account</button>
+      <p class="account-note">Your username and email must be unique across all accounts.</p>
+    </form>
+
+    <div class="delete-card">
+      <h2>Delete Account</h2>
+      <p class="account-note">Deleting your account will remove your access permanently.</p>
+      <form action="/account/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete your account? This cannot be undone.');">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>"/>
+        <div class="form-group">
+          <label>Current Password <span>*</span></label>
+          <input type="password" name="current_password" required placeholder="Confirm password to delete"/>
+        </div>
+        <button type="submit" class="delete-btn">Delete My Account</button>
+      </form>
+    </div>
+  </div>
+</div>
+</body>
+</html>

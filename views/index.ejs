@@ -29,7 +29,7 @@
 
 
   <p class="hero-eyebrow">Live Patent &amp; Trademark Intelligence</p>
-  <h1>Protect What You<br/><span>Build &amp; Create</span></h1>
+  <h1>Own Your Innovation<br/><span>Defend Your Future</span></h1>
    <p class="hero-sub">Real-time patent and trademark data synced automatically from <strong>USPTO</strong>. AI-powered insights, expiry alerts, and global IP monitoring in one platform.</p>
 
   <!-- SEARCH -->
@@ -96,11 +96,25 @@
         <p>Try a different keyword or browse by industry using the chips above.</p>
       </div>
       <% } else { %>
+      <% if (isAuthenticated) { %>
+      <form action="/watchlist/add-selected" method="POST" id="watchlistForm">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>"/>
+        <div class="watchlist-actions" style="margin-bottom: 1rem; display: flex; gap: 0.5rem; align-items: center;">
+          <button type="submit" class="btn btn-primary btn-sm" id="addToWatchlistBtn" disabled>Add Selected to Watchlist</button>
+          <span id="selectedCount" style="font-size: 0.85rem; color: var(--text-secondary);">0 selected</span>
+        </div>
+      <% } %>
       <div class="patents-grid">
         <% results.forEach((p, i) => { %>
          <div class="patent-card" style="animation-delay: <%= i * 0.05 %>s">
            <% if (p.source) { %>
            <span class="source-badge uspto"><%= p.source %></span>
+           <% } %>
+           <% if (isAuthenticated) { %>
+           <div class="watchlist-radio" style="position: absolute; top: 0.5rem; right: 0.5rem;">
+             <input type="radio" name="selected_item" value="<%= p.record_type === 'Trademark' ? 'trademark_' + p.trademark_id : 'patent_' + p.patent_id %>" id="radio_<%= i %>" onchange="updateSelectedCount()"/>
+             <label for="radio_<%= i %>" style="cursor: pointer; font-size: 1.2rem;">⭐</label>
+           </div>
            <% } %>
            <span class="patent-pill" style="<%= p.record_type==='Trademark'?'background:rgba(34,211,238,0.12);color:var(--accent2);':'' %>">
              <%= p.display_number || p.record_type %>
@@ -116,6 +130,9 @@
         </div>
         <% }) %>
       </div>
+      <% if (isAuthenticated) { %>
+      </form>
+      <% } %>
       <% } %>
        <% } else { %>
         <!-- FEATURE CARDS / SUGGESTED SEARCHES -->
@@ -248,12 +265,28 @@ window.addEventListener('popstate', function() {
   window.location.reload();
 });
 
+function updateSelectedCount() {
+  const radios = document.querySelectorAll('input[name="selected_item"]');
+  const checkedRadio = document.querySelector('input[name="selected_item"]:checked');
+  const countEl = document.getElementById('selectedCount');
+  const btnEl = document.getElementById('addToWatchlistBtn');
+
+  if (checkedRadio) {
+    countEl.textContent = '1 selected';
+    btnEl.disabled = false;
+  } else {
+    countEl.textContent = '0 selected';
+    btnEl.disabled = true;
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const t = localStorage.getItem('theme') || 'dark';
   document.documentElement.setAttribute('data-theme', t);
 
   updateAds();
   animateStats();
+  updateSelectedCount();
 });
 </script>
 
