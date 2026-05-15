@@ -51,6 +51,93 @@
   --glow:      0 0 40px rgba(37,99,235,0.05);
 }
 
+/* ═══ PAGE BACKGROUND (user & anonymous sides only) ═════════════════ */
+.page-bg {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+}
+/* Dark mode: blurred background image — very dark & subtle */
+[data-theme="dark"] .page-bg::after {
+  content: '';
+  position: absolute; inset: 0; z-index: -2;
+  background:
+    radial-gradient(ellipse 80% 60% at 10% 5%, rgba(79,140,247,0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 90% 85%, rgba(34,211,238,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 40% at 50% 50%, rgba(167,139,250,0.05) 0%, transparent 60%),
+    radial-gradient(ellipse 30% 30% at 70% 20%, rgba(79,140,247,0.06) 0%, transparent 60%),
+    url('/background.png') center/cover no-repeat;
+  filter: blur(16px) brightness(0.12) saturate(0.6);
+  animation: pageBgShift 25s ease-in-out infinite alternate;
+}
+@keyframes pageBgShift {
+  0%   { opacity: 1; transform: scale(1) translateY(0); }
+  50%  { opacity: 0.92; transform: scale(1.03) translateY(-10px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+/* Light mode: blurred background image — very light to keep text readable */
+[data-theme="light"] .page-bg::after {
+  content: '';
+  position: absolute; inset: 0; z-index: -2;
+  background:
+    radial-gradient(ellipse 80% 60% at 10% 5%, rgba(37,99,235,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 90% 85%, rgba(8,145,178,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 40% at 50% 50%, rgba(124,58,237,0.04) 0%, transparent 60%),
+    url('/background.png') center/cover no-repeat;
+  filter: blur(12px) brightness(0.75) saturate(0.8) opacity(0.35);
+}
+
+/* FLOATING PARTICLES */
+.page-bg::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(2px 2px at 20% 30%, rgba(79,140,247,0.25), transparent),
+    radial-gradient(2px 2px at 40% 70%, rgba(34,211,238,0.2), transparent),
+    radial-gradient(2px 2px at 60% 20%, rgba(167,139,250,0.18), transparent),
+    radial-gradient(2px 2px at 80% 60%, rgba(79,140,247,0.2), transparent),
+    radial-gradient(1.5px 1.5px at 10% 80%, rgba(34,211,238,0.25), transparent),
+    radial-gradient(1.5px 1.5px at 90% 10%, rgba(167,139,250,0.15), transparent);
+  animation: particlesDrift 30s linear infinite;
+  opacity: 0.5;
+}
+@keyframes particlesDrift {
+  0%   { transform: translateY(0) translateX(0); }
+  25%  { transform: translateY(-15px) translateX(5px); }
+  50%  { transform: translateY(-5px) translateX(-8px); }
+  75%  { transform: translateY(10px) translateX(3px); }
+  100% { transform: translateY(0) translateX(0); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+
+/* ═══ WATCHLIST TYPE TOGGLE ═══════════════════════════════════════ */
+.type-toggle {
+  display: inline-flex; gap: 0; margin-bottom: 1rem;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 10px; overflow: hidden;
+}
+.type-btn {
+  padding: 0.5rem 1.2rem; font-size: 0.85rem; font-weight: 600;
+  cursor: pointer; border: none; color: var(--text-2);
+  background: transparent; transition: all 0.2s;
+}
+.type-btn.active {
+  background: rgba(79,140,247,0.15); color: var(--accent);
+}
+.type-btn:not(.active):hover {
+  background: rgba(79,140,247,0.06); color: var(--text);
+}
+[data-theme="light"] .type-toggle {
+  background: var(--card); border-color: var(--border);
+}
+[data-theme="light"] .type-btn.active {
+  background: rgba(37,99,235,0.12); color: var(--accent);
+}
+[data-theme="light"] .type-btn:not(.active):hover {
+  background: rgba(37,99,235,0.06); color: var(--text);
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
 html { font-size:16px; scroll-behavior:smooth; -webkit-font-smoothing:antialiased; }
 

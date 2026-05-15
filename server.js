@@ -60,16 +60,86 @@ app.use((req, res, next) => {
 });
 
 // ─── DATABASE ─────────────────────────────────────────────────────────────────
-const db = mysql.createConnection({
-    host: 'localhost', user: 'root', password: '', database: 'innovashield'
-});
-db.connect((err) => {
-    if (err) console.log('Database connection failed:', err);
-    else { console.log('Connected to MySQL database!'); ensureUsersTable(); }
+let dbReady = false;
+let dbError = null;
+
+function initDatabase() {
+    return new Promise((resolve, reject) => {
+        // First connect WITHOUT specifying the database to create it if needed
+        const tempDb = mysql.createConnection({
+            host: process.env.DB_HOST || 'localhost',
+            user: process.env.DB_USER || 'root',
+            password: process.env.DB_PASSWORD || ''
+        });
+
+        tempDb.connect(async (err) => {
+            if (err) {
+                dbError = err;
+                console.error('❌ MySQL connection failed:', err.message);
+                console.error('Ensure MySQL is running. On Windows, start the MySQL service:');
+                console.error('  services.msc → MySQL → Start');
+                console.error('Or install MySQL: https://dev.mysql.com/downloads/mysql/');
+                tempDb.end();
+                reject(err);
+                return;
+            }
+            console.log('✅ Connected to MySQL server');
+
+            // Create the database if it doesn't exist
+            const dbName = process.env.DB_NAME || 'innovashield';
+            try {
+                await new Promise((res, rej) => {
+                    tempDb.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``, (err) => {
+                        if (err) rej(err); else res();
+                    });
+                });
+                console.log(`✅ Database "${dbName}" ready`);
+            } catch(e) {
+                dbError = e;
+                console.error('❌ Failed to create database:', e.message);
+                tempDb.end();
+                reject(e);
+                return;
+            }
+
+            tempDb.end();
+
+            // Now connect WITH the database
+            const db = mysql.createConnection({
+                host: process.env.DB_HOST || 'localhost',
+                user: process.env.DB_USER || 'root',
+                password: process.env.DB_PASSWORD || '',
+                database: dbName
+            });
+
+            db.connect((err) => {
+                if (err) {
+                    dbError = err;
+                    console.error('❌ Final DB connection failed:', err.message);
+                    reject(err);
+                    return;
+                }
+                console.log('✅ Connected to MySQL database!');
+                dbReady = true;
+                // Attach db to app locals so dbQ can use it
+                app.locals.db = db;
+                resolve(db);
+            });
+        });
+    });
+}
+
+// Start database initialization
+initDatabase().then((db) => {
+    ensureUsersTable();
+}).catch((err) => {
+    console.error('⚠️  Database initialization failed. Login/register will still work, but DB-dependent features will show errors.');
 });
 
 function dbQ(sql, params = []) {
     return new Promise((resolve, reject) => {
+        const db = app.locals.db;
+        if (!db) { reject(new Error('Database not initialized')); return; }
         db.query(sql, params, (err, result) => { if (err) reject(err); else resolve(result); });
     });
 }
@@ -103,6 +173,21 @@ async function ensureUsersTable() {
         }
     } catch(e) { console.error('ensureUsersTable error:', e.message); }
 }
+
+// Database readiness middleware — protect routes that need DB, but allow login/register pages and static assets
+const dbMiddleware = async (req, res, next) => {
+    const allowedWithoutDb = ['/login', '/register', '/public/', '/favicon.ico'];
+    if (allowedWithoutDb.some(p => req.path === p || req.path.startsWith(p))) {
+        return next();
+    }
+    if (!dbReady) {
+        return res.status(503).render('error', {
+            message: 'Database not connected. Ensure MySQL is running and the "innovashield" database exists. Error: ' + (dbError ? dbError.message : 'unknown')
+        });
+    }
+    next();
+};
+app.use(dbMiddleware);
 
 // ─── AUTH MIDDLEWARE ──────────────────────────────────────────────────────────
 function requireLogin(req, res, next) {
@@ -225,27 +310,33 @@ app.get('/login', (req, res) => {
 });
 
 app.post('/login', async (req, res) => {
-    const { username, password } = req.body;
-    const errors = [];
-    if (!username || !username.trim()) errors.push('Username is required.');
-    if (!password) errors.push('Password is required.');
-    if (errors.length) return res.render('login', { errors, next: req.body.next || '/' });
-    try {
-        const rows = await dbQ('SELECT * FROM users WHERE username=? OR email=?', [username.trim(), username.trim()]);
-        if (!rows.length) return res.render('login', { errors: ['Invalid username or password.'], next: req.body.next || '/' });
-        const user = rows[0];
-        const match = await bcrypt.compare(password, user.password_hash);
-        if (!match) return res.render('login', { errors: ['Invalid username or password.'], next: req.body.next || '/' });
-        await dbQ('UPDATE users SET last_login=NOW() WHERE user_id=?', [user.user_id]);
-        req.session.user = { user_id: user.user_id, username: user.username, full_name: user.full_name, role: user.role, email: user.email };
-        req.flash('success', 'Welcome back, ' + (user.full_name || user.username) + '!');
-        if (user.role === 'Admin') return res.redirect('/admin');
-        res.redirect(req.body.next || '/');
-    } catch(e) {
-        console.error('Login error:', e);
-        res.render('login', { errors: ['An error occurred. Please try again.'], next: req.body.next || '/' });
-    }
-});
+     const { username, password } = req.body;
+     const errors = [];
+     if (!username || !username.trim()) errors.push('Username is required.');
+     if (!password) errors.push('Password is required.');
+     if (errors.length) return res.render('login', { errors, next: req.body.next || '/' });
+     try {
+         const rows = await dbQ('SELECT * FROM users WHERE username=? OR email=?', [username.trim(), username.trim()]);
+         if (!rows.length) {
+             console.warn(`Login attempt for unknown user: ${username.trim()}`);
+             return res.render('login', { errors: ['Invalid username or password.'], next: req.body.next || '/' });
+         }
+         const user = rows[0];
+         const match = await bcrypt.compare(password, user.password_hash);
+         if (!match) {
+             console.warn(`Failed password attempt for user: ${username.trim()}`);
+             return res.render('login', { errors: ['Invalid username or password.'], next: req.body.next || '/' });
+         }
+         await dbQ('UPDATE users SET last_login=NOW() WHERE user_id=?', [user.user_id]);
+         req.session.user = { user_id: user.user_id, username: user.username, full_name: user.full_name, role: user.role, email: user.email };
+         req.flash('success', 'Welcome back, ' + (user.full_name || user.username) + '!');
+         const nextUrl = req.body.next || (user.role === 'Admin' ? '/admin' : '/');
+         res.redirect(nextUrl);
+     } catch(e) {
+         console.error('Login error:', e.message);
+         return res.render('login', { errors: ['Login failed: ' + e.message], next: req.body.next || '/' });
+     }
+ });
 
 app.get('/logout', (req, res) => { req.session.destroy(); res.redirect('/login'); });
 
@@ -305,6 +396,7 @@ app.get('/admin', requireLogin, requireRole('Admin'), async (req, res) => {
         const reportType = req.query.report_type || 'all';
         const reportStatus = req.query.status || 'all';
 
+        let reportRows = [];
         let reportSummary = null;
         if (req.query.generate_report === '1') {
             const userRoles = await dbQ('SELECT role, COUNT(*) as count FROM users GROUP BY role');
@@ -348,7 +440,8 @@ app.get('/admin', requireLogin, requireRole('Admin'), async (req, res) => {
                 userCount: totalUsers,
                 userRoles,
                 patentSummary,
-                trademarkSummary
+                trademarkSummary,
+                rowCount: (patentSummary ? patentSummary.total : 0) + (trademarkSummary ? trademarkSummary.total : 0)
             };
         }
 
