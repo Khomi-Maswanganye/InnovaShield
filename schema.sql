@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS users (
     role ENUM('Admin','Analyst','Viewer') DEFAULT 'Viewer',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP NULL,
+    failed_login_attempts INT DEFAULT 0,
+    lockout_expires DATETIME NULL,
     INDEX idx_username (username),
     INDEX idx_role (role)
 );
@@ -29,7 +31,7 @@ CREATE TABLE IF NOT EXISTS patents (
     expiry_date DATE,
     status ENUM('Active','Expired') DEFAULT 'Active',
     description TEXT,
-    source ENUM('USPTO') NOT NULL DEFAULT 'USPTO',
+    source ENUM('USPTO','OpenAlex') NOT NULL DEFAULT 'OpenAlex',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_source (source),
     INDEX idx_status (status),
@@ -47,7 +49,7 @@ CREATE TABLE IF NOT EXISTS trademarks (
     registration_date DATE,
     expiry_date DATE,
     status ENUM('Active','Pending','Renewed') DEFAULT 'Pending',
-    source ENUM('USPTO') NOT NULL DEFAULT 'USPTO',
+    source ENUM('USPTO','OpenAlex') NOT NULL DEFAULT 'OpenAlex',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_source (source),
     INDEX idx_status (status),

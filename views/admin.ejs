@@ -15,6 +15,76 @@
     .activity-item { padding: 1rem; border-bottom: 1px solid var(--border); }
     .activity-item:last-child { border-bottom: none; }
     .activity-time { color: var(--text-3); font-size: 0.8rem; }
+    .metric-card {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .metric-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .metric-icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
+    .metric-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+    }
+    .metric-label {
+      font-size: 0.85rem;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 500;
+    }
+    .role-badge {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.85rem;
+    }
+    .role-name { font-weight: 600; color: var(--text-2); }
+    .role-count {
+      background: var(--accent);
+      color: #fff;
+      border-radius: 12px;
+      padding: 0.2rem 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      min-width: 1.5rem;
+      text-align: center;
+    }
+    .progress-section { margin-top: 1rem; }
+    .progress-label {
+      font-size: 0.85rem;
+      color: var(--text-3);
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+    .progress-bar {
+      background: var(--bg-2);
+      border-radius: 8px;
+      height: 8px;
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+    }
+    .progress-fill {
+      background: linear-gradient(90deg, var(--success), var(--accent));
+      height: 100%;
+      border-radius: 8px;
+      transition: width 0.3s ease;
+    }
+    .progress-text {
+      font-size: 0.8rem;
+      color: var(--text-3);
+      display: flex;
+      justify-content: space-between;
+    }
   </style>
 </head>
 <body>
@@ -133,30 +203,95 @@
     <% if (reportSummary) { %>
     <div style="margin-top:1rem; display:grid; gap:1rem;">
       <div class="card">
-        <h3>User Summary</h3>
-        <p>Total users: <strong><%= reportSummary.userCount %></strong></p>
-        <ul>
+        <h3>📊 User Summary</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+          <div class="metric-card">
+            <div class="metric-icon">👥</div>
+            <div class="metric-value"><%= reportSummary.userCount %></div>
+            <div class="metric-label">Total Users</div>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.75rem;">
           <% reportSummary.userRoles.forEach(role => { %>
-          <li><strong><%= role.role %></strong>: <%= role.count %></li>
+          <div class="role-badge">
+            <span class="role-name"><%= role.role %></span>
+            <span class="role-count"><%= role.count %></span>
+          </div>
           <% }) %>
-        </ul>
+        </div>
       </div>
       <% if (reportSummary.patentSummary) { %>
       <div class="card">
-        <h3>Patent Summary</h3>
-        <p>Total patents created in range: <strong><%= reportSummary.patentSummary.total %></strong></p>
-        <p>Active: <strong><%= reportSummary.patentSummary.active %></strong></p>
-        <p>Expired: <strong><%= reportSummary.patentSummary.expired %></strong></p>
-        <p>Expiring soon: <strong><%= reportSummary.patentSummary.expiringSoon %></strong></p>
+        <h3>📋 Patent Summary</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+          <div class="metric-card">
+            <div class="metric-icon">📄</div>
+            <div class="metric-value"><%= reportSummary.patentSummary.total %></div>
+            <div class="metric-label">Total Patents</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="color: var(--success);">✅</div>
+            <div class="metric-value"><%= reportSummary.patentSummary.active %></div>
+            <div class="metric-label">Active</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="color: var(--muted);">❌</div>
+            <div class="metric-value"><%= reportSummary.patentSummary.expired %></div>
+            <div class="metric-label">Expired</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="color: var(--accent);">⏰</div>
+            <div class="metric-value"><%= reportSummary.patentSummary.expiringSoon %></div>
+            <div class="metric-label">Expiring Soon</div>
+          </div>
+        </div>
+        <div class="progress-section">
+          <div class="progress-label">Active vs Expired</div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: <%= reportSummary.patentSummary.total > 0 ? (reportSummary.patentSummary.active / reportSummary.patentSummary.total * 100) : 0 %>%"></div>
+          </div>
+          <div class="progress-text">
+            <span style="color: var(--success);">Active: <%= reportSummary.patentSummary.active %></span> |
+            <span style="color: var(--muted);">Expired: <%= reportSummary.patentSummary.expired %></span>
+          </div>
+        </div>
       </div>
       <% } %>
       <% if (reportSummary.trademarkSummary) { %>
       <div class="card">
-        <h3>Trademark Summary</h3>
-        <p>Total trademarks created in range: <strong><%= reportSummary.trademarkSummary.total %></strong></p>
-        <p>Active: <strong><%= reportSummary.trademarkSummary.active %></strong></p>
-        <p>Expired: <strong><%= reportSummary.trademarkSummary.expired %></strong></p>
-        <p>Expiring soon: <strong><%= reportSummary.trademarkSummary.expiringSoon %></strong></p>
+        <h3>™️ Trademark Summary</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+          <div class="metric-card">
+            <div class="metric-icon">™️</div>
+            <div class="metric-value"><%= reportSummary.trademarkSummary.total %></div>
+            <div class="metric-label">Total Trademarks</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="color: var(--success);">✅</div>
+            <div class="metric-value"><%= reportSummary.trademarkSummary.active %></div>
+            <div class="metric-label">Active</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="color: var(--muted);">❌</div>
+            <div class="metric-value"><%= reportSummary.trademarkSummary.expired %></div>
+            <div class="metric-label">Expired</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="color: var(--accent);">⏰</div>
+            <div class="metric-value"><%= reportSummary.trademarkSummary.expiringSoon %></div>
+            <div class="metric-label">Expiring Soon</div>
+          </div>
+        </div>
+        <div class="progress-section">
+          <div class="progress-label">Active vs Expired</div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: <%= reportSummary.trademarkSummary.total > 0 ? (reportSummary.trademarkSummary.active / reportSummary.trademarkSummary.total * 100) : 0 %>%"></div>
+          </div>
+          <div class="progress-text">
+            <span style="color: var(--success);">Active: <%= reportSummary.trademarkSummary.active %></span> |
+            <span style="color: var(--muted);">Expired: <%= reportSummary.trademarkSummary.expired %></span>
+          </div>
+        </div>
       </div>
       <% } %>
     </div>

@@ -35,6 +35,28 @@ app.use(session({
 }));
 app.use(flash());
 
+const LOGIN_ATTEMPT_LIMIT = 5;
+const LOCKOUT_MINUTES = 15;
+const USERNAME_MIN_LEN = 3;
+const USERNAME_MAX_LEN = 100;
+const PASSWORD_MIN_LEN = 8;
+
+function safeRedirect(url, fallback = '/') {
+    if (!url || typeof url !== 'string') return fallback;
+    if (!url.startsWith('/') || url.startsWith('//')) return fallback;
+    return url;
+}
+
+function isValidLoginIdentifier(value) {
+    if (!value || typeof value !== 'string') return false;
+    const normalized = value.trim();
+    if (normalized.length < USERNAME_MIN_LEN || normalized.length > USERNAME_MAX_LEN) return false;
+    if (normalized.includes('@')) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized);
+    }
+    return /^[A-Za-z0-9._-]+$/.test(normalized);
+}
+
 app.use((req, res, next) => {
     res.locals.currentUser = req.session.user || null;
     res.locals.flashSuccess = req.flash('success');
@@ -131,7 +153,11 @@ function initDatabase() {
 
 // Start database initialization
 initDatabase().then((db) => {
-    ensureUsersTable();
+    ensureUsersTable().then(() => {
+        // Only start auto-sync AFTER the DB and tables are fully ready
+        runAutoSync();
+        setInterval(() => runAutoSync(), 6 * 60 * 60 * 1000);
+    });
 }).catch((err) => {
     console.error('⚠️  Database initialization failed. Login/register will still work, but DB-dependent features will show errors.');
 });
@@ -155,9 +181,78 @@ async function ensureUsersTable() {
             role ENUM('Admin','Analyst','Viewer') DEFAULT 'Viewer',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             last_login TIMESTAMP NULL,
+            failed_login_attempts INT DEFAULT 0,
+            lockout_expires DATETIME NULL,
             INDEX idx_username (username),
             INDEX idx_role (role)
         )`);
+
+        const existingLockoutColumn = await dbQ("SHOW COLUMNS FROM users LIKE 'failed_login_attempts'");
+        if (!existingLockoutColumn.length) {
+            await dbQ('ALTER TABLE users ADD COLUMN failed_login_attempts INT DEFAULT 0');
+        }
+        const existingLockoutExpires = await dbQ("SHOW COLUMNS FROM users LIKE 'lockout_expires'");
+        if (!existingLockoutExpires.length) {
+            await dbQ('ALTER TABLE users ADD COLUMN lockout_expires DATETIME NULL');
+        }
+
+        await dbQ(`CREATE TABLE IF NOT EXISTS patents (
+            patent_id INT AUTO_INCREMENT PRIMARY KEY,
+            patent_number VARCHAR(50) UNIQUE NOT NULL,
+            title TEXT NOT NULL,
+            owner VARCHAR(255) DEFAULT 'Unknown',
+            industry VARCHAR(100),
+            filing_date DATE,
+            expiry_date DATE,
+            status ENUM('Active','Expired') DEFAULT 'Active',
+            description TEXT,
+            source ENUM('USPTO','OpenAlex') NOT NULL DEFAULT 'OpenAlex',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_source (source),
+            INDEX idx_status (status),
+            INDEX idx_industry (industry),
+            INDEX idx_expiry (expiry_date)
+        )`);
+
+        await dbQ(`CREATE TABLE IF NOT EXISTS trademarks (
+            trademark_id INT AUTO_INCREMENT PRIMARY KEY,
+            trademark_number VARCHAR(50) UNIQUE NOT NULL,
+            name TEXT NOT NULL,
+            owner VARCHAR(255) DEFAULT 'Unknown',
+            industry VARCHAR(100),
+            registration_date DATE,
+            expiry_date DATE,
+            status ENUM('Active','Pending','Renewed') DEFAULT 'Pending',
+            source ENUM('USPTO','OpenAlex') NOT NULL DEFAULT 'OpenAlex',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_source (source),
+            INDEX idx_status (status),
+            INDEX idx_industry (industry),
+            INDEX idx_expiry (expiry_date)
+        )`);
+
+        await dbQ(`CREATE TABLE IF NOT EXISTS watchlist (
+            watchlist_id INT AUTO_INCREMENT PRIMARY KEY,
+            patent_id INT NULL,
+            trademark_id INT NULL,
+            user_id VARCHAR(100),
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (patent_id) REFERENCES patents(patent_id) ON DELETE CASCADE,
+            FOREIGN KEY (trademark_id) REFERENCES trademarks(trademark_id) ON DELETE CASCADE
+        )`);
+
+        await dbQ(`CREATE TABLE IF NOT EXISTS ownership_changes (
+            change_id INT AUTO_INCREMENT PRIMARY KEY,
+            patent_id INT,
+            old_owner VARCHAR(255),
+            new_owner VARCHAR(255),
+            change_date DATE,
+            recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (patent_id) REFERENCES patents(patent_id) ON DELETE SET NULL
+        )`);
+
+        console.log('✅ All tables ready');
         const existing = await dbQ('SELECT COUNT(*) as c FROM users');
         if (existing[0].c === 0) {
             const adminUser = process.env.ADMIN_USERNAME || 'admin';
@@ -295,9 +390,6 @@ async function runAutoSync(topic) {
     } catch(e) { console.error('[AUTO-SYNC] Error:', e.message); return { uspto: 0, trademarks: 0 }; }
 }
 
-runAutoSync();
-setInterval(() => runAutoSync(), 6 * 60 * 60 * 1000);
-
 // ═══════════════════════════════════════════════════════════════════════════════
 // AUTH ROUTES
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -310,31 +402,50 @@ app.get('/login', (req, res) => {
 });
 
 app.post('/login', async (req, res) => {
-     const { username, password } = req.body;
+     const username = String(req.body.username || '').trim();
+     const password = String(req.body.password || '');
+     const nextUrl = safeRedirect(req.body.next || '/');
      const errors = [];
-     if (!username || !username.trim()) errors.push('Username is required.');
+
+     if (!username) errors.push('Username or email is required.');
+     if (!isValidLoginIdentifier(username)) errors.push('Enter a valid username or email address.');
      if (!password) errors.push('Password is required.');
-     if (errors.length) return res.render('login', { errors, next: req.body.next || '/' });
+     else if (password.length < PASSWORD_MIN_LEN) errors.push(`Password must be at least ${PASSWORD_MIN_LEN} characters.`);
+     if (errors.length) return res.render('login', { errors, next: nextUrl });
+
      try {
-         const rows = await dbQ('SELECT * FROM users WHERE username=? OR email=?', [username.trim(), username.trim()]);
+         const rows = await dbQ('SELECT * FROM users WHERE username=? OR email=?', [username, username]);
          if (!rows.length) {
-             console.warn(`Login attempt for unknown user: ${username.trim()}`);
-             return res.render('login', { errors: ['Invalid username or password.'], next: req.body.next || '/' });
+             console.warn(`Login attempt for unknown user: ${username}`);
+             return res.render('login', { errors: ['Invalid username or password.'], next: nextUrl });
          }
+
          const user = rows[0];
+         if (user.lockout_expires && new Date(user.lockout_expires) > new Date()) {
+             const unlockTime = new Date(user.lockout_expires).toLocaleString();
+             return res.render('login', { errors: [`Account locked until ${unlockTime} after too many failed login attempts.`], next: nextUrl });
+         }
+
          const match = await bcrypt.compare(password, user.password_hash);
          if (!match) {
-             console.warn(`Failed password attempt for user: ${username.trim()}`);
-             return res.render('login', { errors: ['Invalid username or password.'], next: req.body.next || '/' });
+             const failedAttempts = (user.failed_login_attempts || 0) + 1;
+             if (failedAttempts >= LOGIN_ATTEMPT_LIMIT) {
+                 await dbQ('UPDATE users SET failed_login_attempts=?, lockout_expires=DATE_ADD(NOW(), INTERVAL ? MINUTE) WHERE user_id=?', [failedAttempts, LOCKOUT_MINUTES, user.user_id]);
+                 console.warn(`Account locked for user: ${username} after ${failedAttempts} failed attempts`);
+             } else {
+                 await dbQ('UPDATE users SET failed_login_attempts=? WHERE user_id=?', [failedAttempts, user.user_id]);
+                 console.warn(`Failed password attempt ${failedAttempts} for user: ${username}`);
+             }
+             return res.render('login', { errors: ['Invalid username or password.'], next: nextUrl });
          }
-         await dbQ('UPDATE users SET last_login=NOW() WHERE user_id=?', [user.user_id]);
+
+         await dbQ('UPDATE users SET last_login=NOW(), failed_login_attempts=0, lockout_expires=NULL WHERE user_id=?', [user.user_id]);
          req.session.user = { user_id: user.user_id, username: user.username, full_name: user.full_name, role: user.role, email: user.email };
          req.flash('success', 'Welcome back, ' + (user.full_name || user.username) + '!');
-         const nextUrl = req.body.next || (user.role === 'Admin' ? '/admin' : '/');
-         res.redirect(nextUrl);
+         res.redirect(user.role === 'Admin' ? '/admin' : nextUrl);
      } catch(e) {
          console.error('Login error:', e.message);
-         return res.render('login', { errors: ['Login failed: ' + e.message], next: req.body.next || '/' });
+         return res.render('login', { errors: ['Login failed. Please try again later.'], next: nextUrl });
      }
  });
 
@@ -542,33 +653,142 @@ app.get('/admin/report/export/pdf', requireLogin, requireRole('Admin'), async (r
         res.setHeader('Content-Disposition', 'attachment; filename="admin-report.pdf"');
         const doc = new PDFDocument({ size: 'A4', margin: 50 });
         doc.pipe(res);
-        doc.fontSize(18).text('Admin Report', { underline: true });
-        doc.moveDown();
-        doc.fontSize(12).text(`Generated by: ${req.session.user.full_name || req.session.user.username}`);
-        doc.text(`Date range: ${dateFrom} to ${dateTo}`);
-        doc.text(`Type: ${reportType}`);
-        doc.text(`Status: ${reportStatus}`);
-        doc.text(`Total Users: ${totalUsers}`);
-        userRoles.forEach(role => {
-            doc.text(`  ${role.role}: ${role.count}`);
+
+        // Colors matching website theme
+        const colors = {
+            primary: '#4f63d7',    // accent
+            success: '#10b981',    // success
+            muted: '#6b7280',      // muted
+            text: '#1f2937',       // text
+            textLight: '#6b7280',  // text-3
+            bg: '#f9fafb',         // bg-2
+            border: '#e5e7eb'      // border
+        };
+
+        // Header
+        doc.fillColor(colors.primary).fontSize(24).font('Helvetica-Bold').text('📊 InnovaShield Admin Report', 50, 50);
+        doc.moveDown(0.5);
+
+        // Report metadata
+        doc.fillColor(colors.textLight).fontSize(10).font('Helvetica');
+        doc.text(`Generated by: ${req.session.user.full_name || req.session.user.username}`, 50, doc.y);
+        doc.text(`Generated on: ${new Date().toLocaleString()}`, 50, doc.y);
+        doc.text(`Date range: ${dateFrom} to ${dateTo}`, 50, doc.y);
+        doc.text(`Report type: ${reportType} | Status filter: ${reportStatus}`, 50, doc.y);
+        doc.moveDown(1);
+
+        // User Summary Table
+        doc.fillColor(colors.primary).fontSize(16).font('Helvetica-Bold').text('👥 User Summary', 50, doc.y);
+        doc.moveDown(0.5);
+
+        // Table header
+        const tableTop = doc.y;
+        const colWidths = [200, 100];
+        const rowHeight = 25;
+
+        // Header row
+        doc.fillColor(colors.primary).rect(50, tableTop, colWidths[0], rowHeight).fill();
+        doc.fillColor(colors.primary).rect(50 + colWidths[0], tableTop, colWidths[1], rowHeight).fill();
+        doc.fillColor('white').fontSize(12).font('Helvetica-Bold');
+        doc.text('Role', 60, tableTop + 8);
+        doc.text('Count', 50 + colWidths[0] + 10, tableTop + 8);
+
+        // Data rows
+        let currentY = tableTop + rowHeight;
+        userRoles.forEach((role, index) => {
+            const bgColor = index % 2 === 0 ? colors.bg : 'white';
+            doc.fillColor(bgColor).rect(50, currentY, colWidths[0], rowHeight).fill();
+            doc.fillColor(bgColor).rect(50 + colWidths[0], currentY, colWidths[1], rowHeight).fill();
+            doc.fillColor(colors.text).fontSize(11).font('Helvetica');
+            doc.text(role.role, 60, currentY + 8);
+            doc.text(role.count.toString(), 50 + colWidths[0] + 10, currentY + 8);
+            currentY += rowHeight;
         });
-        doc.moveDown();
+
+        // Total row
+        doc.fillColor(colors.primary).rect(50, currentY, colWidths[0] + colWidths[1], rowHeight).fill();
+        doc.fillColor('white').fontSize(12).font('Helvetica-Bold');
+        doc.text('Total Users', 60, currentY + 8);
+        doc.text(totalUsers.toString(), 50 + colWidths[0] + 10, currentY + 8);
+
+        doc.moveDown(2);
+
+        // Patent Summary
         if (patentSummary) {
-            doc.fontSize(14).text('Patent Summary');
-            doc.fontSize(12).text(`  Total: ${patentSummary.total}`);
-            doc.text(`  Active: ${patentSummary.active}`);
-            doc.text(`  Expired: ${patentSummary.expired}`);
-            doc.text(`  Expiring Soon: ${patentSummary.expiringSoon}`);
-            doc.moveDown();
+            doc.fillColor(colors.primary).fontSize(16).font('Helvetica-Bold').text('📋 Patent Summary', 50, doc.y);
+            doc.moveDown(0.5);
+
+            const patentTableTop = doc.y;
+            const patentColWidths = [150, 80, 80, 80, 80];
+            const patentRowHeight = 25;
+
+            // Patent header
+            const headers = ['Metric', 'Total', 'Active', 'Expired', 'Expiring Soon'];
+            headers.forEach((header, i) => {
+                doc.fillColor(colors.primary).rect(50 + patentColWidths.slice(0, i).reduce((a, b) => a + b, 0), patentTableTop, patentColWidths[i], patentRowHeight).fill();
+                doc.fillColor('white').fontSize(10).font('Helvetica-Bold');
+                doc.text(header, 50 + patentColWidths.slice(0, i).reduce((a, b) => a + b, 0) + 5, patentTableTop + 8);
+            });
+
+            // Patent data
+            const patentData = [
+                ['Count', patentSummary.total, patentSummary.active, patentSummary.expired, patentSummary.expiringSoon]
+            ];
+
+            let patentY = patentTableTop + patentRowHeight;
+            patentData.forEach((row, index) => {
+                const bgColor = colors.bg;
+                row.forEach((cell, i) => {
+                    doc.fillColor(bgColor).rect(50 + patentColWidths.slice(0, i).reduce((a, b) => a + b, 0), patentY, patentColWidths[i], patentRowHeight).fill();
+                    const textColor = i === 0 ? colors.text : (i === 2 ? colors.success : i === 3 ? colors.muted : colors.primary);
+                    doc.fillColor(textColor).fontSize(11).font('Helvetica-Bold');
+                    doc.text(cell.toString(), 50 + patentColWidths.slice(0, i).reduce((a, b) => a + b, 0) + 5, patentY + 8);
+                });
+                patentY += patentRowHeight;
+            });
+
+            doc.moveDown(2);
         }
+
+        // Trademark Summary
         if (trademarkSummary) {
-            doc.fontSize(14).text('Trademark Summary');
-            doc.fontSize(12).text(`  Total: ${trademarkSummary.total}`);
-            doc.text(`  Active: ${trademarkSummary.active}`);
-            doc.text(`  Expired: ${trademarkSummary.expired}`);
-            doc.text(`  Expiring Soon: ${trademarkSummary.expiringSoon}`);
-            doc.moveDown();
+            doc.fillColor(colors.primary).fontSize(16).font('Helvetica-Bold').text('™️ Trademark Summary', 50, doc.y);
+            doc.moveDown(0.5);
+
+            const trademarkTableTop = doc.y;
+            const trademarkColWidths = [150, 80, 80, 80, 80];
+            const trademarkRowHeight = 25;
+
+            // Trademark header
+            const tmHeaders = ['Metric', 'Total', 'Active', 'Expired', 'Expiring Soon'];
+            tmHeaders.forEach((header, i) => {
+                doc.fillColor(colors.primary).rect(50 + trademarkColWidths.slice(0, i).reduce((a, b) => a + b, 0), trademarkTableTop, trademarkColWidths[i], trademarkRowHeight).fill();
+                doc.fillColor('white').fontSize(10).font('Helvetica-Bold');
+                doc.text(header, 50 + trademarkColWidths.slice(0, i).reduce((a, b) => a + b, 0) + 5, trademarkTableTop + 8);
+            });
+
+            // Trademark data
+            const trademarkData = [
+                ['Count', trademarkSummary.total, trademarkSummary.active, trademarkSummary.expired, trademarkSummary.expiringSoon]
+            ];
+
+            let trademarkY = trademarkTableTop + trademarkRowHeight;
+            trademarkData.forEach((row, index) => {
+                const bgColor = colors.bg;
+                row.forEach((cell, i) => {
+                    doc.fillColor(bgColor).rect(50 + trademarkColWidths.slice(0, i).reduce((a, b) => a + b, 0), trademarkY, trademarkColWidths[i], trademarkRowHeight).fill();
+                    const textColor = i === 0 ? colors.text : (i === 2 ? colors.success : i === 3 ? colors.muted : colors.primary);
+                    doc.fillColor(textColor).fontSize(11).font('Helvetica-Bold');
+                    doc.text(cell.toString(), 50 + trademarkColWidths.slice(0, i).reduce((a, b) => a + b, 0) + 5, trademarkY + 8);
+                });
+                trademarkY += trademarkRowHeight;
+            });
         }
+
+        // Footer
+        doc.fillColor(colors.textLight).fontSize(8).font('Helvetica');
+        doc.text('Generated by InnovaShield Admin Dashboard', 50, 750);
+
         doc.end();
     } catch(e) { console.error(e); res.status(500).send('Export failed'); }
 });

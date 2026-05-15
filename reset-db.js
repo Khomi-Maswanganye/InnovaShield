@@ -38,6 +38,8 @@ db.connect((err) => {
             role ENUM('Admin','Analyst','Viewer') DEFAULT 'Viewer',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             last_login TIMESTAMP NULL,
+            failed_login_attempts INT DEFAULT 0,
+            lockout_expires DATETIME NULL,
             INDEX idx_username (username),
             INDEX idx_role (role)
         );
