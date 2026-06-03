@@ -83,9 +83,10 @@ db.connect((err) => {
             watchlist_id INT AUTO_INCREMENT PRIMARY KEY,
             patent_id INT NULL,
             trademark_id INT NULL,
-            user_id VARCHAR(100),
+            user_id INT NOT NULL,
             notes TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
         );
         
         CREATE TABLE patent_queue (

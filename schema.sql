@@ -62,11 +62,12 @@ CREATE TABLE IF NOT EXISTS watchlist (
     watchlist_id INT AUTO_INCREMENT PRIMARY KEY,
     patent_id INT NULL,
     trademark_id INT NULL,
-    user_id VARCHAR(100),
+    user_id INT NOT NULL,
     notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (patent_id) REFERENCES patents(patent_id) ON DELETE CASCADE,
     FOREIGN KEY (trademark_id) REFERENCES trademarks(trademark_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
     CHECK (patent_id IS NOT NULL OR trademark_id IS NOT NULL)
 );
 

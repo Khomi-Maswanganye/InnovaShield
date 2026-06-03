@@ -527,7 +527,7 @@ app.post('/register', asyncHandler(async (req, res) => {
         console.error('Register error:', e);
         res.render('register', { errors: ['An error occurred. Please try again.'], formData: req.body });
     }
-}));
+});
 
 app.get('/account', requireLogin, asyncHandler(async (req, res) => {
     try {
@@ -538,7 +538,7 @@ app.get('/account', requireLogin, asyncHandler(async (req, res) => {
         console.error('Account load error:', e);
         res.render('error', { message: 'Could not load account details.' });
     }
-}));
+});
 
 app.post('/account', requireLogin, asyncHandler(async (req, res) => {
     const { username, email, full_name, current_password, new_password, confirm_new_password } = req.body;
@@ -602,7 +602,7 @@ app.post('/account', requireLogin, asyncHandler(async (req, res) => {
         req.flash('error', ['An error occurred updating your account. Please try again.']);
         res.redirect('/account');
     }
-}));
+});
 
 app.post('/account/delete', requireLogin, asyncHandler(async (req, res) => {
     const { current_password } = req.body;
@@ -629,7 +629,7 @@ app.post('/account/delete', requireLogin, asyncHandler(async (req, res) => {
         req.flash('error', ['Could not delete your account. Please try again later.']);
         res.redirect('/account');
     }
-}));
+});
 
 app.get('/admin', requireLogin, requireRole('Admin'), asyncHandler(async (req, res) => {
     try {
@@ -725,7 +725,7 @@ app.get('/admin', requireLogin, requireRole('Admin'), asyncHandler(async (req, r
             adminName: req.session.user.full_name || req.session.user.username
         });
     } catch(e) { res.render('error', { message: 'Could not load dashboard.' }); }
-}));
+});
 
 app.get('/admin/report/export/csv', requireLogin, requireRole('Admin'), asyncHandler(async (req, res) => {
     try {
@@ -766,7 +766,7 @@ app.get('/admin/report/export/csv', requireLogin, requireRole('Admin'), asyncHan
         res.setHeader('Content-Disposition', 'attachment; filename="admin-report.csv"');
         res.send(csv);
     } catch(e) { console.error(e); res.status(500).send('Export failed'); }
-}));
+});
 
 app.get('/admin/report/export/pdf', requireLogin, requireRole('Admin'), asyncHandler(async (req, res) => {
     try {
@@ -937,14 +937,14 @@ app.get('/admin/report/export/pdf', requireLogin, requireRole('Admin'), asyncHan
 
         doc.end();
     } catch(e) { console.error(e); res.status(500).send('Export failed'); }
-}));
+});
 
 app.get('/admin/users', requireLogin, requireRole('Admin'), asyncHandler(async (req, res) => {
     try {
         const users = await dbQ('SELECT user_id, username, email, full_name, role, created_at, last_login FROM users ORDER BY created_at DESC');
         res.render('admin_users', { users });
     } catch(e) { res.render('error', { message: 'Could not load users.' }); }
-}));
+});
 
 app.post('/admin/users/delete/:id', requireLogin, requireRole('Admin'), asyncHandler(async (req, res) => {
     try {
@@ -956,7 +956,7 @@ app.post('/admin/users/delete/:id', requireLogin, requireRole('Admin'), asyncHan
         req.flash('success', 'User deleted.');
         res.redirect('/admin/users');
     } catch(e) { req.flash('error', 'Could not delete user.'); res.redirect('/admin/users'); }
-}));
+});
 
 app.post('/admin/users/role/:id', requireLogin, requireRole('Admin'), asyncHandler(async (req, res) => {
     try {
@@ -967,7 +967,7 @@ app.post('/admin/users/role/:id', requireLogin, requireRole('Admin'), asyncHandl
         req.flash('success', 'User role updated.');
         res.redirect('/admin/users');
     } catch(e) { req.flash('error', 'Could not update role.'); res.redirect('/admin/users'); }
-}));
+});
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // MAIN ROUTES
@@ -1007,73 +1007,10 @@ app.get('/', asyncHandler(async (req, res) => {
         if (industry) { patentSql += ' AND industry=?'; pParams.push(industry); tmSql += ' AND industry=?'; tmParams.push(industry); }
         const patents = searchType !== 'trademarks' ? await dbQ(patentSql, pParams) : [];
         const tms = searchType !== 'patents' ? await dbQ(tmSql, tmParams) : [];
-
-        const watchlistLookup = new Set();
-        if (req.session.user) {
-            const watchlistRows = await dbQ('SELECT patent_id, trademark_id FROM watchlist WHERE user_id=?', [req.session.user.user_id]);
-            watchlistRows.forEach(row => {
-                if (row.patent_id) watchlistLookup.add(`patent_${row.patent_id}`);
-                if (row.trademark_id) watchlistLookup.add(`trademark_${row.trademark_id}`);
-            });
-        } else if (req.session.guestWatchlist) {
-            req.session.guestWatchlist.forEach(item => {
-                if (item.patent_id) watchlistLookup.add(`patent_${item.patent_id}`);
-                if (item.trademark_id) watchlistLookup.add(`trademark_${item.trademark_id}`);
-            });
-        }
-
-        const results = [...patents, ...tms]
-            .map(p => {
-                const selectionValue = `${p.record_type.toLowerCase()}_${p.record_type === 'Trademark' ? p.trademark_id : p.patent_id}`;
-                const legalDate = p.record_type === 'Trademark' ? p.registration_date : p.filing_date;
-                const legalLabel = p.record_type === 'Trademark' ? 'Registration Date' : 'Filed';
-                const summarySource = p.description || '';
-                const fallbackSummary = p.record_type === 'Trademark'
-                    ? `Trademark "${p.display_title}" owned by ${p.owner || 'Unknown'} in ${p.industry || 'Industry not set'}. Status: ${p.status || 'Unknown'}.`
-                    : `Patent "${p.display_title}" owned by ${p.owner || 'Unknown'} in ${p.industry || 'Industry not set'}. Status: ${p.status || 'Unknown'}.`;
-                const summaryText = summarySource.trim() || fallbackSummary;
-                const expiresText = p.expiry_date ? new Date(p.expiry_date).toLocaleDateString() : 'TBD';
-                let durationText = 'Not active';
-                if (p.status === 'Active' && p.expiry_date) {
-                    const now = new Date();
-                    const expiry = new Date(p.expiry_date);
-                    const diffDays = Math.round((expiry - now) / (1000 * 60 * 60 * 24));
-                    durationText = diffDays >= 0 ? `${Math.max(diffDays, 0)} day(s)` : 'Expired';
-                }
-                const summaryHtml = String(summaryText)
-                    .replace(/&/g, '&amp;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;')
-                    .replace(/\n/g, '<br/>');
-                const detailHtml = `
-                    <div class="summary-detail-row"><strong>Owner</strong><span>${(p.owner || 'Unknown')}</span></div>
-                    <div class="summary-detail-row"><strong>Name</strong><span>${(p.display_title || 'Untitled')}</span></div>
-                    <div class="summary-detail-row"><strong>Status</strong><span>${(p.status || 'Unknown')}</span></div>
-                    <div class="summary-detail-row"><strong>${legalLabel}</strong><span>${legalDate ? new Date(legalDate).toLocaleDateString() : 'Unknown'}</span></div>
-                    <div class="summary-detail-row"><strong>Expires</strong><span>${expiresText}</span></div>
-                    <div class="summary-detail-row"><strong>Active duration</strong><span>${durationText}</span></div>
-                    <div class="summary-detail-row"><strong>Industry</strong><span>${(p.industry || 'Unknown')}</span></div>
-                    <div class="summary-detail-copy"><strong>Summary</strong><p>${summaryHtml}</p></div>
-                `;
-
-                return {
-                    ...p,
-                    selectionValue,
-                    in_watchlist: watchlistLookup.has(selectionValue),
-                    summary_html: summaryHtml,
-                    detail_html: detailHtml
-                };
-            })
-            .sort((a, b) => {
-                const aTitle = (a.display_title || '').toLowerCase();
-                const bTitle = (b.display_title || '').toLowerCase();
-                if (aTitle < bTitle) return -1;
-                if (aTitle > bTitle) return 1;
-                return 0;
-            });
+        const results = [...patents, ...tms].sort((a, b) => (a[orderBy] > b[orderBy]) ? 1 : -1);
         res.render('index', { results, query, industry, searchType, sortBy, industries, stats, lastSyncTime, lastSyncCounts, isAuthenticated: !!req.session.user });
     } catch(e) { console.error(e); res.render('error', { message: 'Database error.' }); }
-}));
+});
 
 // ─── PATENTS ──────────────────────────────────────────────────────────────────
 app.get('/patents', requireLogin, requireRole('Admin', 'Analyst'), asyncHandler(async (req, res) => {
@@ -1102,7 +1039,7 @@ app.get('/patents', requireLogin, requireRole('Admin', 'Analyst'), asyncHandler(
         const industries = await dbQ('SELECT DISTINCT industry FROM patents WHERE industry IS NOT NULL ORDER BY industry');
         res.render('patents', { patents, search, source, statusFilter, industryFilter, dateFrom, dateTo, defaultFrom, sourceCounts, activeCount, industries, success: req.query.success, lastSyncTime, lastSyncCounts });
     } catch(e) { console.error(e); res.render('error', { message: 'Database error loading patents.' }); }
-}));
+});
 
 app.get('/patents/export/csv', requireLogin, requireRole('Admin', 'Analyst'), asyncHandler(async (req, res) => {
     try {
@@ -1112,12 +1049,12 @@ app.get('/patents/export/csv', requireLogin, requireRole('Admin', 'Analyst'), as
         res.setHeader('Content-Disposition', 'attachment; filename="patents.csv"');
         res.send(csv);
     } catch(e) { res.status(500).send('Export failed'); }
-}));
+});
 
 app.post('/patents/delete/:id', requireLogin, requireRole('Admin','Analyst'), asyncHandler(async (req, res) => {
     try { await dbQ('DELETE FROM patents WHERE patent_id=?', [req.params.id]); res.redirect('/patents?success=deleted'); }
     catch(e) { res.redirect('/patents'); }
-}));
+});
 
 // ─── TRADEMARKS ───────────────────────────────────────────────────────────────
 app.get('/trademarks', requireLogin, requireRole('Admin', 'Analyst'), asyncHandler(async (req, res) => {
@@ -1141,7 +1078,7 @@ app.get('/trademarks', requireLogin, requireRole('Admin', 'Analyst'), asyncHandl
         const trademarks = await dbQ(sql, p);
         res.render('trademarks', { trademarks, search, source, statusFilter, dateFrom, dateTo, defaultFrom, success: req.query.success, lastSyncTime, lastSyncCounts });
     } catch(e) { console.error(e); res.render('error', { message: 'Database error loading trademarks.' }); }
-}));
+});
 
 app.get('/trademarks/export/csv', requireLogin, requireRole('Admin', 'Analyst'), asyncHandler(async (req, res) => {
     try {
@@ -1151,12 +1088,12 @@ app.get('/trademarks/export/csv', requireLogin, requireRole('Admin', 'Analyst'),
         res.setHeader('Content-Disposition', 'attachment; filename="trademarks.csv"');
         res.send(csv);
     } catch(e) { res.status(500).send('Export failed'); }
-}));
+});
 
 app.post('/trademarks/delete/:id', requireLogin, requireRole('Admin','Analyst'), asyncHandler(async (req, res) => {
     try { await dbQ('DELETE FROM trademarks WHERE trademark_id=?', [req.params.id]); res.redirect('/trademarks?success=deleted'); }
     catch(e) { res.redirect('/trademarks'); }
-}));
+});
 
 // ─── WATCHLIST ────────────────────────────────────────────────────────────────
 app.get('/watchlist', asyncHandler(async (req, res) => {
@@ -1209,7 +1146,7 @@ app.get('/watchlist', asyncHandler(async (req, res) => {
             guestCount: req.session.guestWatchlist.length
         });
     } catch(e) { console.error(e); res.render('error', { message: 'Could not load watchlist.' }); }
-}));
+});
 
 app.post('/watchlist/add', asyncHandler(async (req, res) => {
     const { type, patent_id, trademark_id, notes } = req.body;
@@ -1223,8 +1160,8 @@ app.post('/watchlist/add', asyncHandler(async (req, res) => {
         if (!req.session.user) {
             if (!req.session.guestWatchlist) req.session.guestWatchlist = [];
             if (req.session.guestWatchlist.length >= 5) {
-                req.flash('error', 'Anonymous watchlist is limited to 5 items. Upgrade on the pricing page to add more.');
-                return res.redirect('/pricing');
+                req.flash('error', 'Anonymous watchlist is limited to 5 items. Please register or log in to add more.');
+                return res.redirect('/watchlist');
             }
             req.session.guestWatchlist.push({
                 type,
@@ -1241,7 +1178,7 @@ app.post('/watchlist/add', asyncHandler(async (req, res) => {
             [type === 'patent' ? patent_id : null, type === 'trademark' ? trademark_id : null, req.session.user.user_id, notes || null]);
         res.redirect('/watchlist?success=added');
     } catch(e) { req.flash('error', 'Could not add to watchlist.'); res.redirect('/watchlist'); }
-}));
+});
 
 app.get('/watchlist/edit/:id', requireLogin, asyncHandler(async (req, res) => {
     try {
@@ -1256,7 +1193,7 @@ app.get('/watchlist/edit/:id', requireLogin, asyncHandler(async (req, res) => {
         const watchlist = await dbQ('SELECT w.*, p.title as patent_title, t.name as trademark_title FROM watchlist w LEFT JOIN patents p ON w.patent_id=p.patent_id LEFT JOIN trademarks t ON w.trademark_id=t.trademark_id ORDER BY w.watchlist_id DESC');
         res.render('watchlist', { watchlist, patents: allPatents, trademarks: allTrademarks, success: null, editItem: item });
     } catch(e) { res.redirect('/watchlist'); }
-}));
+});
 
 app.post('/watchlist/update', requireLogin, asyncHandler(async (req, res) => {
     const { watchlist_id, type, patent_id, trademark_id, notes } = req.body;
@@ -1276,7 +1213,7 @@ app.post('/watchlist/update', requireLogin, asyncHandler(async (req, res) => {
             [type === 'patent' ? patent_id : null, type === 'trademark' ? trademark_id : null, notes || null, watchlist_id]);
         res.redirect('/watchlist?success=updated');
     } catch(e) { req.flash('error', 'Could not update.'); res.redirect('/watchlist'); }
-}));
+});
 
 app.post('/watchlist/delete/:id', requireLogin, asyncHandler(async (req, res) => {
     try {
@@ -1288,64 +1225,40 @@ app.post('/watchlist/delete/:id', requireLogin, asyncHandler(async (req, res) =>
         await dbQ('DELETE FROM watchlist WHERE watchlist_id=?', [req.params.id]);
         res.redirect('/watchlist?success=deleted');
     } catch(e) { req.flash('error', 'Could not remove.'); res.redirect('/watchlist'); }
-}));
+});
 
-app.post('/watchlist/add-selected', asyncHandler(async (req, res) => {
+app.post('/watchlist/add-selected', requireLogin, asyncHandler(async (req, res) => {
     const { selected_item } = req.body;
-    const backUrl = req.get('Referrer') || req.get('Referer') || '/';
-    const isAjax = req.xhr || req.headers['x-requested-with'] === 'XMLHttpRequest';
-
-    const sendResponse = (status, success, message, redirectUrl) => {
-        if (isAjax) {
-            return res.status(status).json({ success, message, redirectUrl });
-        }
-        if (redirectUrl) return res.redirect(redirectUrl);
-        return success ? res.redirect(backUrl) : res.redirect(backUrl);
-    };
-
     if (!selected_item) {
-        return sendResponse(400, false, 'Please select an item to add to watchlist.');
+        req.flash('error', 'Please select an item to add to watchlist.');
+        return res.redirect('back');
     }
 
     const [type, id] = selected_item.split('_');
     if (!type || !id || (type !== 'patent' && type !== 'trademark')) {
-        return sendResponse(400, false, 'Invalid selection.');
+        req.flash('error', 'Invalid selection.');
+        return res.redirect('back');
     }
 
     try {
-        if (!req.session.user) {
-            if (!req.session.guestWatchlist) req.session.guestWatchlist = [];
-            if (req.session.guestWatchlist.some(item => item.type === type && ((type === 'patent' && item.patent_id === id) || (type === 'trademark' && item.trademark_id === id)))) {
-                return sendResponse(409, false, 'This item is already in your watchlist.');
-            }
-            if (req.session.guestWatchlist.length >= 5) {
-                return sendResponse(403, false, 'Anonymous watchlist is limited to 5 items. Upgrade on the pricing page to add more.', '/pricing');
-            }
-            req.session.guestWatchlist.push({
-                type,
-                patent_id: type === 'patent' ? id : null,
-                trademark_id: type === 'trademark' ? id : null,
-                notes: null,
-                user_id: 'Anonymous',
-                created_at: new Date().toISOString()
-            });
-            return sendResponse(200, true, 'Added to watchlist!');
-        }
-
+        // Check if already in watchlist
         const existing = await dbQ('SELECT watchlist_id FROM watchlist WHERE user_id=? AND ' +
             (type === 'patent' ? 'patent_id=?' : 'trademark_id=?'), [req.session.user.user_id, id]);
         if (existing.length > 0) {
-            return sendResponse(409, false, 'This item is already in your watchlist.');
+            req.flash('error', 'This item is already in your watchlist.');
+            return res.redirect('back');
         }
 
         await dbQ('INSERT INTO watchlist (patent_id, trademark_id, user_id, notes) VALUES (?,?,?,?)',
             [type === 'patent' ? id : null, type === 'trademark' ? id : null, req.session.user.user_id, null]);
-        return sendResponse(200, true, 'Added to watchlist!');
+        req.flash('success', 'Added to watchlist!');
+        res.redirect('back');
     } catch(e) {
         console.error(e);
-        return sendResponse(500, false, 'Could not add to watchlist.');
+        req.flash('error', 'Could not add to watchlist.');
+        res.redirect('back');
     }
-}));
+});
 
 app.get('/watchlist/export/csv', requireLogin, asyncHandler(async (req, res) => {
     try {
@@ -1359,7 +1272,7 @@ app.get('/watchlist/export/csv', requireLogin, asyncHandler(async (req, res) => 
         res.setHeader('Content-Disposition', 'attachment; filename="watchlist.csv"');
         res.send(csv);
     } catch(e) { res.status(500).send('Export failed'); }
-}));
+});
 
 // ─── EXPIRING ─────────────────────────────────────────────────────────────────
 app.get('/expiring', requireLogin, asyncHandler(async (req, res) => {
@@ -1373,7 +1286,7 @@ app.get('/expiring', requireLogin, asyncHandler(async (req, res) => {
         const trademarks = await dbQ("SELECT * FROM trademarks WHERE expiry_date BETWEEN ? AND ? AND status='Active' ORDER BY expiry_date ASC", [dateFrom, dateTo]);
         res.render('expiring', { patents, trademarks, dateFrom, dateTo, defaultFrom, defaultTo });
     } catch(e) { res.render('error', { message: 'Could not load expiring records.' }); }
-}));
+});
 
 app.get('/expiring/export/csv', requireLogin, asyncHandler(async (req, res) => {
     try {
@@ -1388,7 +1301,7 @@ app.get('/expiring/export/csv', requireLogin, asyncHandler(async (req, res) => {
         res.setHeader('Content-Disposition', 'attachment; filename="expiring.csv"');
         res.send(csv);
     } catch(e) { res.status(500).send('Export failed'); }
-}));
+});
 
 // ─── ALERTS ───────────────────────────────────────────────────────────────────
 app.get('/alerts', requireLogin, asyncHandler(async (req, res) => {
@@ -1397,7 +1310,7 @@ app.get('/alerts', requireLogin, asyncHandler(async (req, res) => {
         const changes = await dbQ('SELECT * FROM ownership_changes ORDER BY change_date DESC LIMIT 10').catch(() => []);
         res.render('alerts', { alerts, changes });
     } catch(e) { res.render('error', { message: 'Could not load alerts.' }); }
-}));
+});
 
 // ─── TRENDS ───────────────────────────────────────────────────────────────────
 app.get('/trends', requireLogin, asyncHandler(async (req, res) => {
@@ -1407,7 +1320,7 @@ app.get('/trends', requireLogin, asyncHandler(async (req, res) => {
         const statusStats = await dbQ('SELECT status, COUNT(*) as total FROM patents GROUP BY status');
         res.render('trends', { industryStats, topOwners, statusStats });
     } catch(e) { res.render('error', { message: 'Could not load trends.' }); }
-}));
+});
 
 app.get('/trends/export/csv', requireLogin, asyncHandler(async (req, res) => {
     try {
@@ -1417,7 +1330,7 @@ app.get('/trends/export/csv', requireLogin, asyncHandler(async (req, res) => {
         res.setHeader('Content-Disposition', 'attachment; filename="trends.csv"');
         res.send(csv);
     } catch(e) { res.status(500).send('Export failed'); }
-}));
+});
 
 // ─── PRICING & API ────────────────────────────────────────────────────────────
 app.get('/pricing', (req, res) => { res.render('pricing'); });
@@ -1437,12 +1350,12 @@ app.post('/api/ai-insights', requireLogin, asyncHandler(async (req, res) => {
         const clean = data.content[0].text.replace(/```json|```/g, '').trim();
         res.json(JSON.parse(clean));
     } catch(e) { res.status(500).json({ error: 'AI error' }); }
-}));
+});
 
 app.post('/api/sync', requireLogin, requireRole('Admin','Analyst'), asyncHandler(async (req, res) => {
     const counts = await runAutoSync(req.body.topic || 'artificial intelligence');
     res.json({ success: true, synced: counts, time: new Date() });
-}));
+});
 
 app.get('/api/sync-status', requireLogin, asyncHandler(async (req, res) => {
     try {
@@ -1450,17 +1363,17 @@ app.get('/api/sync-status', requireLogin, asyncHandler(async (req, res) => {
         const tCount = await dbQ('SELECT COUNT(*) as c FROM trademarks');
         res.json({ sources, trademarks: tCount[0].c, lastSyncTime, lastSyncCounts });
     } catch(e) { res.status(500).json({ error: 'DB error' }); }
-}));
+});
 
 app.get('/api/patents', requireLogin, requireRole('Admin'), asyncHandler(async (req, res) => {
     try { const r = await dbQ('SELECT * FROM patents'); res.json({ success: true, count: r.length, data: r }); }
     catch(e) { res.status(500).json({ error: 'DB error' }); }
-}));
+});
 
 app.get('/api/trademarks', requireLogin, requireRole('Admin'), asyncHandler(async (req, res) => {
     try { const r = await dbQ('SELECT * FROM trademarks'); res.json({ success: true, count: r.length, data: r }); }
     catch(e) { res.status(500).json({ error: 'DB error' }); }
-}));
+});
 
 app.use((err, req, res, next) => {
     console.error('Unhandled error:', err);

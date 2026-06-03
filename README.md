@@ -31,12 +31,19 @@ mysql -u root -p innovashield < schema.sql
 ### 3. Configure Environment
 No special environment variables required for USPTO-only mode. The application works out of the box.
 
-If you have custom DB credentials, create `.env`:
+If you have custom DB credentials or your database is on another machine, create `.env`:
 ```env
-DB_HOST=localhost
+DB_HOST=192.168.1.100
+DB_PORT=3306
 DB_USER=root
-DB_PASSWORD=
+DB_PASSWORD=yourpassword
 DB_NAME=innovashield
+```
+
+For deployment on a web server, also set the host and port if needed:
+```env
+HOST=0.0.0.0
+PORT=3000
 ```
 
 ### 4. Start the Server
@@ -46,7 +53,11 @@ npm start
 node server.js
 ```
 
-Visit: **http://localhost:3000**
+Visit locally: **http://localhost:3000**
+
+From a remote client, open: **http://<server-ip>:3000**
+
+> Ensure the server machine firewall allows inbound traffic on the selected port, and MySQL allows remote connections from the app server host.
 
 ---
 

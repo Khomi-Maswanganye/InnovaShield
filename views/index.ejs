@@ -41,7 +41,7 @@
       </div>
       <div class="search-toggle">
         <label class="toggle-label">
-          <input type="radio" name="type" value="both" <% if (!locals.searchType || searchType === 'both') { %>checked<% } %>/> Both
+          <input type="radio" name="type" value="both" <% if (!locals.searchType || searchType === 'both') { %>checked <% } %> /> Both
         </label>
         <label class="toggle-label">
           <input type="radio" name="type" value="patents" <% if (locals.searchType === 'patents') { %>checked<% } %>/> Patents Only
@@ -56,88 +56,136 @@
 
 <!-- ═══ LIVE STATS ════════════════════════════════════════════════ -->
 <div class="container" id="main-content" style="padding-top:0;">
-  <div class="stats-bar">
-     <div class="stat-pill">
-       <div class="stat-num" id="statPatents"><%= stats.patents.toLocaleString() %></div>
-       <div class="stat-label">Patents Indexed</div>
-       <div class="stat-src">USPTO PatentsView</div>
-     </div>
-    <div class="stat-pill">
-      <div class="stat-num" id="statTrademarks"><%= stats.trademarks.toLocaleString() %></div>
-      <div class="stat-label">Trademarks Tracked</div>
-      <div class="stat-src">USPTO TM API</div>
-    </div>
-    <div class="stat-pill">
-      <div class="stat-num" id="statActive"><%= stats.active.toLocaleString() %></div>
-      <div class="stat-label">Active Patents</div>
-      <div class="stat-src">Live status</div>
-    </div>
-    <div class="stat-pill">
-      <div class="stat-num" style="color:var(--warning)"><%= stats.expiring %></div>
-      <div class="stat-label">Expiring Soon</div>
-      <div class="stat-src">Next 90 days</div>
-    </div>
-  </div>
-
-  <!-- ═══ AD: Rectangle Right ════════════════════════════════════ -->
-  <div style="display:flex; gap:1.5rem; align-items:flex-start;">
-    <div style="flex:1;">
+  <div style="display:flex; gap:1.5rem; align-items:flex-start; flex-wrap:wrap;">
+    <div style="flex:1; min-width:320px;">
 
       <!-- Search results OR feature cards -->
       <% if (query || industry) { %>
-      <div class="section-header">
-        <h2>Search Results <span class="count-badge"><%= results.length %> found</span></h2>
-        <a href="/" class="btn btn-ghost btn-sm">✕ Clear</a>
-      </div>
-      <% if (results.length === 0) { %>
-      <div class="empty-state">
-        <div class="empty-icon">🔍</div>
-        <h3>No results found</h3>
-        <p>Try a different keyword or browse by industry using the chips above.</p>
-      </div>
-      <% } else { %>
-      <% if (isAuthenticated) { %>
-      <form action="/watchlist/add-selected" method="POST" id="watchlistForm">
-        <input type="hidden" name="_csrf" value="<%= csrfToken %>"/>
-        <div class="watchlist-actions" style="margin-bottom: 1rem; display: flex; gap: 0.5rem; align-items: center;">
-          <button type="submit" class="btn btn-primary btn-sm" id="addToWatchlistBtn" disabled>Add Selected to Watchlist</button>
-          <span id="selectedCount" style="font-size: 0.85rem; color: var(--text-secondary);">0 selected</span>
+        <div class="section-header">
+          <h2>Search Results <span class="count-badge"><%= results.length %> found</span></h2>
+          <a href="/" class="btn btn-ghost btn-sm">✕ Clear</a>
         </div>
-      <% } %>
-      <div class="patents-grid">
-        <% results.forEach((p, i) => { %>
-         <div class="patent-card" style="animation-delay: <%= i * 0.05 %>s">
-           <% if (p.source) { %>
-           <span class="source-badge uspto"><%= p.source %></span>
-           <% } %>
-           <% if (isAuthenticated) { %>
-           <div class="watchlist-radio" style="position: absolute; top: 0.5rem; right: 0.5rem;">
-             <input type="radio" name="selected_item" value="<%= p.record_type === 'Trademark' ? 'trademark_' + p.trademark_id : 'patent_' + p.patent_id %>" id="radio_<%= i %>" onchange="updateSelectedCount()"/>
-             <label for="radio_<%= i %>" style="cursor: pointer; font-size: 1.2rem;">⭐</label>
-           </div>
-           <% } %>
-           <span class="patent-pill" style="<%= p.record_type==='Trademark'?'background:rgba(34,211,238,0.12);color:var(--accent2);':'' %>">
-             <%= p.display_number || p.record_type %>
-           </span>
-          <div class="patent-title"><%= p.display_title %></div>
-          <div class="patent-owner">👤 <%= p.owner %></div>
-          <div class="patent-meta">
-            <span class="meta-item" style="color:var(--accent2);"><%= p.record_type %></span>
-            <span class="meta-item"><span class="status-dot dot-<%= (p.status||'pending').toLowerCase() %>"></span> <%= p.status %></span>
-            <% if (p.expiry_date) { %><span class="meta-item">📅 <%= new Date(p.expiry_date).toLocaleDateString() %></span><% } %>
-            <% if (p.industry) { %><span class="meta-item">🏭 <%= p.industry %></span><% } %>
+
+        <% if (results.length === 0) { %>
+          <div class="empty-state">
+            <div class="empty-icon">🔍</div>
+            <h3>No results found</h3>
+            <p>Try a different keyword or browse by industry using the chips above.</p>
+          </div>
+        <% } else { %>
+            <form action="/watchlist/add-selected" method="POST" id="watchlistForm">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>"/>
+              <div class="watchlist-actions" style="margin-bottom: 1rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap:wrap;">
+                <button type="submit" class="btn btn-primary btn-sm" id="addToWatchlistBtn" disabled>Add Selected to Watchlist</button>
+                <span id="selectedCount" style="font-size: 0.85rem; color: var(--text-secondary);">0 selected</span>
+                <div id="watchlistFeedback" style="display:none; margin-left:1rem; font-size:0.9rem;">&nbsp;</div>
+              </div>
+
+          <div class="patents-grid">
+            <% results.forEach((p, i) => { %>
+              <div class="patent-card" data-watchlist-value="<%= p.selectionValue %>" data-watchlist-state="<%= p.in_watchlist ? 'true' : 'false' %>" style="animation-delay: <%= i * 0.05 %>s">
+                <% if (p.source) { %>
+                  <span class="source-badge uspto"><%= p.source %></span>
+                <% } %>
+
+                  <div class="watchlist-radio">
+                    <% if (p.in_watchlist) { %>
+                      <span class="watchlist-heart added" title="Already in watchlist">♥</span>
+                    <% } else { %>
+                      <input type="radio" name="selected_item" value="<%= p.record_type === 'Trademark' ? 'trademark_' + p.trademark_id : 'patent_' + p.patent_id %>" id="radio_<%= i %>" onchange="updateSelectedCount()"/>
+                      <label class="watchlist-heart" for="radio_<%= i %>" title="Add to watchlist">♥</label>
+                    <% } %>
+                  </div>
+
+                <span class="patent-pill" style="<%= p.record_type === 'Trademark' ? 'background:rgba(34,211,238,0.12);color:var(--accent2);' : '' %>">
+                  <%= p.display_number || p.record_type %>
+                </span>
+                <div class="patent-title"><%= p.display_title %></div>
+                <div class="patent-owner">👤 <%= p.owner %></div>
+                <div class="patent-meta">
+                  <span class="meta-item" style="color:var(--accent2);"><%= p.record_type %></span>
+                  <span class="meta-item"><span class="status-dot dot-<%= (p.status || 'pending').toLowerCase() %>"></span> <%= p.status %></span>
+                  <% if (p.expiry_date) { %><span class="meta-item">📅 <%= new Date(p.expiry_date).toLocaleDateString() %></span><% } %>
+                  <% if (p.industry) { %><span class="meta-item">🏭 <%= p.industry %></span><% } %>
+                </div>
+                <div class="patent-summary-overlay">
+                  <div class="patent-summary-inner">
+                    <div class="summary-headline">Summary</div>
+                    <p class="summary-text"><%- p.summary_html %></p>
+                    <div class="summary-tip">Hover to preview, click card for full details.</div>
+                  </div>
+                </div>
+                <div class="patent-detail-html" style="display:none;"><%- p.detail_html %></div>
+              </div>
+            <% }) %>
+          </div>
+
+            </form>
+        <% } %>
+
+        <div class="section-header section-header--stats" style="margin-top: 1.25rem;">
+          <div>
+            <h2 class="section-title">Innovation Pulse</h2>
+            <p class="section-subtitle">Track patents, trademarks and expiring IP without leaving the page.</p>
           </div>
         </div>
-        <% }) %>
-      </div>
-      <% if (isAuthenticated) { %>
-      </form>
-      <% } %>
-      <% } %>
-       <% } else { %>
+        <div class="stats-bar">
+          <div class="stat-pill">
+            <div class="stat-num" id="statPatents"><%= stats.patents.toLocaleString() %></div>
+            <div class="stat-label">Patents Indexed</div>
+            <div class="stat-src">USPTO PatentsView</div>
+          </div>
+          <div class="stat-pill">
+            <div class="stat-num" id="statTrademarks"><%= stats.trademarks.toLocaleString() %></div>
+            <div class="stat-label">Trademarks Tracked</div>
+            <div class="stat-src">USPTO TM API</div>
+          </div>
+          <div class="stat-pill">
+            <div class="stat-num" id="statActive"><%= stats.active.toLocaleString() %></div>
+            <div class="stat-label">Active Patents</div>
+            <div class="stat-src">Live status</div>
+          </div>
+          <div class="stat-pill">
+            <div class="stat-num" style="color:var(--warning)"><%= stats.expiring %></div>
+            <div class="stat-label">Expiring Soon</div>
+            <div class="stat-src">Next 90 days</div>
+          </div>
+        </div>
+      <% } else { %>
+        <div class="section-header section-header--stats" style="margin-top: 2rem;">
+          <div>
+            <h2 class="section-title">Innovation Pulse</h2>
+            <p class="section-subtitle">Track patents, trademarks and expiring IP without leaving the page.</p>
+          </div>
+        </div>
+        <div class="stats-bar">
+          <div class="stat-pill">
+            <div class="stat-num" id="statPatents"><%= stats.patents.toLocaleString() %></div>
+            <div class="stat-label">Patents Indexed</div>
+            <div class="stat-src">USPTO PatentsView</div>
+          </div>
+          <div class="stat-pill">
+            <div class="stat-num" id="statTrademarks"><%= stats.trademarks.toLocaleString() %></div>
+            <div class="stat-label">Trademarks Tracked</div>
+            <div class="stat-src">USPTO TM API</div>
+          </div>
+          <div class="stat-pill">
+            <div class="stat-num" id="statActive"><%= stats.active.toLocaleString() %></div>
+            <div class="stat-label">Active Patents</div>
+            <div class="stat-src">Live status</div>
+          </div>
+          <div class="stat-pill">
+            <div class="stat-num" style="color:var(--warning)"><%= stats.expiring %></div>
+            <div class="stat-label">Expiring Soon</div>
+            <div class="stat-src">Next 90 days</div>
+          </div>
+        </div>
+
         <!-- FEATURE CARDS / SUGGESTED SEARCHES -->
         <div style="margin-top: 2rem;">
-          <h2>Explore by Industry</h2>
+          <div class="section-header section-header--compact">
+            <h2>Explore by Industry</h2>
+          </div>
           <div class="suggested">
             <a href="/?q=artificial+intelligence" class="chip" data-pjax>🤖 AI</a>
             <a href="/?q=healthcare" class="chip" data-pjax>🏥 Healthcare</a>
@@ -149,7 +197,9 @@
             <a href="/?q=fintech" class="chip" data-pjax>💰 FinTech</a>
           </div>
 
-          <h2 style="margin-top: 1.5rem;">Quick Access</h2>
+          <div class="section-header section-header--compact" style="margin-top: 1.5rem;">
+            <h2>Quick Access</h2>
+          </div>
           <div class="suggested">
             <a href="/expiring" class="chip">⚠️ Expiring Soon</a>
             <a href="/watchlist" class="chip">⭐ My Watchlist</a>
@@ -157,15 +207,8 @@
             <a href="/pricing" class="chip">💳 View Pricing</a>
           </div>
         </div>
-       <% } %>
+      <% } %>
 
-    </div>
-
-    <!-- Ad: Rectangle -->
-    <div style="flex-shrink:0; display:none; /* shown on larger screens via JS */">
-      <div class="ad-slot ad-slot-rectangle">
-        <span class="ad-slot-label">300×250</span>
-      </div>
     </div>
   </div>
 
@@ -187,6 +230,21 @@
    <div style="margin-top:0.5rem;font-size:0.72rem;">
      Data sourced from USPTO PatentsView API and USPTO Trademark API · Auto-synced every 6 hours
    </div>
+</div>
+
+<div id="summaryModal" class="summary-modal" aria-hidden="true">
+  <div class="summary-modal-backdrop"></div>
+  <div class="summary-modal-panel" role="dialog" aria-modal="true" aria-labelledby="summaryModalTitle">
+    <button type="button" class="summary-modal-close" id="summaryModalClose">×</button>
+    <div class="summary-modal-header">
+      <div class="summary-modal-type" id="summaryModalType"></div>
+      <h2 class="summary-modal-title" id="summaryModalTitle"></h2>
+    </div>
+    <div class="summary-modal-body" id="summaryModalBody"></div>
+    <div class="summary-modal-actions">
+      <button type="button" class="btn btn-primary" id="summaryWatchlistBtn">Add to Watchlist</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -231,6 +289,7 @@ document.addEventListener('click', function(e) {
   const scrollY = window.scrollY;
 
   fetch(url, {
+    credentials: 'same-origin',
     headers: { 'X-Requested-With': 'XMLHttpRequest' }
   })
   .then(response => {
@@ -260,25 +319,232 @@ document.addEventListener('click', function(e) {
   });
 });
 
-// Handle back/forward navigation (full reload)
-window.addEventListener('popstate', function() {
-  window.location.reload();
+function loadHomeSearch(url) {
+  const currentScrollY = window.scrollY;
+  fetch(url, {
+    credentials: 'same-origin',
+    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+  })
+  .then(response => {
+    if (!response.ok) throw new Error('Network response was not ok');
+    return response.text();
+  })
+  .then(html => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const newMain = doc.getElementById('main-content');
+    if (!newMain) {
+      window.location.href = url;
+      return;
+    }
+    const currentMain = document.getElementById('main-content');
+    if (currentMain) {
+      currentMain.replaceWith(newMain);
+    }
+    window.history.pushState({ url }, '', url);
+    window.scrollTo({ top: currentScrollY, behavior: 'auto' });
+    animateStats();
+    updateAds();
+    updateSelectedCount();
+    bindSummaryCards();
+  })
+  .catch(err => {
+    console.error('Search fetch failed:', err);
+    window.location.href = url;
+  });
+}
+
+document.addEventListener('submit', function(e) {
+  const form = e.target.closest('#searchForm');
+  if (!form) return;
+  e.preventDefault();
+  const params = new URLSearchParams(new FormData(form)).toString();
+  const url = form.action + (params ? '?' + params : '');
+  loadHomeSearch(url);
 });
 
-function updateSelectedCount() {
-  const radios = document.querySelectorAll('input[name="selected_item"]');
-  const checkedRadio = document.querySelector('input[name="selected_item"]:checked');
-  const countEl = document.getElementById('selectedCount');
-  const btnEl = document.getElementById('addToWatchlistBtn');
+document.querySelectorAll('#searchForm input[name="type"]').forEach(input => {
+  input.addEventListener('change', function() {
+    const form = this.closest('#searchForm');
+    if (!form) return;
+    const params = new URLSearchParams(new FormData(form)).toString();
+    const url = form.action + (params ? '?' + params : '');
+    loadHomeSearch(url);
+  });
+});
 
-  if (checkedRadio) {
-    countEl.textContent = '1 selected';
-    btnEl.disabled = false;
-  } else {
-    countEl.textContent = '0 selected';
-    btnEl.disabled = true;
+window.addEventListener('popstate', function(event) {
+  if (event.state && event.state.url) {
+    loadHomeSearch(event.state.url);
   }
-}
+});
+
+  function updateSelectedCount() {
+    const checkedRadio = document.querySelector('input[name="selected_item"]:checked');
+    const countEl = document.getElementById('selectedCount');
+    const btnEl = document.getElementById('addToWatchlistBtn');
+    const hearts = document.querySelectorAll('.watchlist-heart');
+
+    hearts.forEach(label => {
+      const input = document.getElementById(label.htmlFor);
+      label.classList.toggle('selected', input && input.checked);
+    });
+
+    if (countEl) countEl.textContent = checkedRadio ? '1 selected' : '0 selected';
+    if (btnEl) btnEl.disabled = !checkedRadio;
+  }
+
+  document.addEventListener('click', function(e) {
+    const heart = e.target.closest('.watchlist-heart');
+    if (!heart) return;
+    if (heart.classList.contains('added')) return;
+    const input = document.getElementById(heart.htmlFor);
+    if (!input) return;
+
+    setTimeout(() => {
+      updateSelectedCount();
+      const form = heart.closest('form');
+      if (form) {
+        if (typeof form.requestSubmit === 'function') form.requestSubmit();
+        else form.submit();
+      }
+    }, 0);
+  });
+
+  const watchlistForm = document.getElementById('watchlistForm');
+  const watchlistFeedback = document.getElementById('watchlistFeedback');
+  let watchlistFeedbackTimer = null;
+
+  function showWatchlistFeedback(message, isError = false) {
+    if (!watchlistFeedback) return;
+    watchlistFeedback.textContent = message;
+    watchlistFeedback.style.display = 'inline-block';
+    watchlistFeedback.style.color = isError ? 'var(--danger)' : 'var(--accent)';
+    if (watchlistFeedbackTimer) clearTimeout(watchlistFeedbackTimer);
+    watchlistFeedbackTimer = setTimeout(() => {
+      watchlistFeedback.style.display = 'none';
+    }, 4500);
+  }
+
+  async function submitWatchlistAjax(event) {
+    if (!watchlistForm) return;
+    event.preventDefault();
+
+    const form = event.target.closest('#watchlistForm');
+    if (!form) return;
+    const url = form.action;
+    const data = new URLSearchParams(new FormData(form)).toString();
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+        },
+        body: data
+      });
+      const json = await response.json().catch(() => null);
+
+      if (response.ok && json && json.success) {
+        showWatchlistFeedback(json.message || 'Added to watchlist!');
+        const selectedRadio = form.querySelector('input[name="selected_item"]:checked');
+        if (selectedRadio) {
+          const selectedLabel = document.querySelector(`label[for="${selectedRadio.id}"]`);
+          if (selectedLabel) {
+            selectedLabel.classList.add('added');
+            selectedLabel.textContent = '♥';
+            selectedLabel.title = 'Already in watchlist';
+          }
+          selectedRadio.checked = false;
+          updateSelectedCount();
+        }
+      } else {
+        const message = json && json.message ? json.message : 'Could not add to watchlist.';
+        showWatchlistFeedback(message, true);
+        if (json && json.redirectUrl) {
+          window.location.href = json.redirectUrl;
+        }
+      }
+    } catch (err) {
+      console.error('Watchlist submit failed:', err);
+      showWatchlistFeedback('Could not add to watchlist. Please try again.', true);
+    }
+  }
+
+  if (watchlistForm) {
+    watchlistForm.addEventListener('submit', submitWatchlistAjax);
+  }
+
+  function closeSummaryModal() {
+    const modal = document.getElementById('summaryModal');
+    if (!modal) return;
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
+  function bindSummaryCards() {
+    document.querySelectorAll('.patent-card').forEach(card => {
+      if (card.dataset.summaryBound) return;
+      card.dataset.summaryBound = 'true';
+      card.addEventListener('click', function(e) {
+        if (e.target.closest('.watchlist-radio') || e.target.closest('input') || e.target.closest('label') || e.target.closest('a')) return;
+        const title = this.querySelector('.patent-title')?.textContent?.trim() || 'Details';
+        const type = this.querySelector('.patent-meta .meta-item')?.textContent?.trim() || '';
+        const number = this.querySelector('.patent-pill')?.textContent?.trim() || '';
+        const detailEl = this.querySelector('.patent-detail-html');
+        const summaryBody = detailEl ? detailEl.innerHTML : (this.querySelector('.summary-text')?.innerHTML || 'No summary available.');
+        const modal = document.getElementById('summaryModal');
+        const watchlistBtn = document.getElementById('summaryWatchlistBtn');
+        if (!modal) return;
+        document.getElementById('summaryModalType').textContent = type;
+        document.getElementById('summaryModalTitle').textContent = number ? `${number} · ${title}` : title;
+        document.getElementById('summaryModalBody').innerHTML = summaryBody;
+        if (watchlistBtn) {
+          const already = this.dataset.watchlistState === 'true';
+          watchlistBtn.dataset.selectionValue = this.dataset.watchlistValue || '';
+          watchlistBtn.textContent = already ? 'Already in Watchlist' : 'Add to Watchlist';
+          watchlistBtn.disabled = already;
+        }
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+      });
+    });
+  }
+
+  const summaryModal = document.getElementById('summaryModal');
+  const summaryModalClose = document.getElementById('summaryModalClose');
+  const summaryWatchlistBtn = document.getElementById('summaryWatchlistBtn');
+  if (summaryWatchlistBtn) {
+    summaryWatchlistBtn.addEventListener('click', function() {
+      const selectionValue = this.dataset.selectionValue;
+      if (!selectionValue) return;
+      if (!watchlistForm) return;
+      const radio = watchlistForm.querySelector(`input[name="selected_item"][value="${selectionValue}"]`);
+      if (radio) {
+        radio.checked = true;
+        updateSelectedCount();
+        if (typeof watchlistForm.requestSubmit === 'function') watchlistForm.requestSubmit();
+        else watchlistForm.submit();
+      }
+    });
+  }
+  if (summaryModal) {
+    summaryModalClose?.addEventListener('click', closeSummaryModal);
+    summaryModal.addEventListener('click', function(e) {
+      if (e.target === this || e.target.classList.contains('summary-modal-backdrop')) {
+        closeSummaryModal();
+      }
+    });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeSummaryModal();
+    });
+  }
+
+  updateSelectedCount();
+  bindSummaryCards();
+
 
 document.addEventListener('DOMContentLoaded', () => {
   const t = localStorage.getItem('theme') || 'dark';
