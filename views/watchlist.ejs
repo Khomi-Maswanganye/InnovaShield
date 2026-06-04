@@ -6,41 +6,47 @@
   <title>InnovaShield – Watchlist</title>
   <link rel="stylesheet" href="/style.css"/>
   <script>
-    (function(){ 
-      const t = localStorage.getItem('theme') || 'dark';
-      document.documentElement.setAttribute('data-theme', t);
+    (function(){
+      document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
     })();
-
-    function toggleTheme() {
-    const curr = document.documentElement.getAttribute('data-theme');
-    const next = curr === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    localStorage.setItem('theme', next);
-    document.querySelector('.theme-toggle').textContent = next === 'dark' ? '◑' : '●';
-  }
-
-  document.addEventListener('DOMContentLoaded', () => {
-    const t = localStorage.getItem('theme') || 'dark';
-    const btn = document.querySelector('.theme-toggle');
-    if (btn) btn.textContent = t === 'dark' ? '◑' : '●';
-  });
   </script>
 </head>
 <body>
 <div class="page-bg"></div>
-
 <%- include('_nav', { active: 'watchlist' }) %>
 
 <div class="container">
-  <div class="page-header">
-    <h1>👁️ Watchlist</h1>
-    <p>Track patents and trademarks you are monitoring for changes.</p>
+
+  <!-- ── PAGE HEADER ── -->
+  <div class="page-header" style="margin-bottom:2rem;">
+    <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap; justify-content:space-between;">
+      <div>
+       <h1 style="font-size:2rem; margin-bottom:0.35rem; display:flex; align-items:center; gap:0.6rem;">
+  <span style="
+    display:inline-flex; align-items:center; justify-content:center;
+    width:38px; height:38px; border-radius:10px; flex-shrink:0;
+    background:linear-gradient(135deg, var(--accent), var(--accent2));
+    box-shadow:0 0 18px rgba(79,140,247,0.35);
+  ">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
+  </span>
+  Watchlist
+</h1>
+        <p style="margin:0;">Track patents and trademarks you are monitoring for changes.</p>
+      </div>
+      <% if (!isAuthenticated) { %>
+      <div style="display:flex; gap:0.75rem;">
+        <a href="/login" class="btn btn-primary">🔐 Login</a>
+        <a href="/register" class="btn btn-ghost">✨ Register</a>
+      </div>
+      <% } %>
+    </div>
   </div>
 
-  <% if (!isAuthenticated) { %>
-  <div class="info-banner">You can explore watchlist features here without being redirected to login. Log in to add, edit, and save your personal watchlist.</div>
-  <% } %>
-
+  <!-- ── FLASH BANNERS ── -->
   <% if (locals.query && locals.query.success === 'added') { %>
   <div class="success-banner">✅ Added to watchlist!</div>
   <% } else if (locals.query && locals.query.success === 'updated') { %>
@@ -48,213 +54,329 @@
   <% } else if (locals.query && locals.query.success === 'deleted') { %>
   <div class="success-banner">✅ Removed from watchlist!</div>
   <% } %>
-
   <% if (editItem) { %>
-  <div class="edit-banner">✏️ Editing watchlist item #<%= editItem.watchlist_id %></div>
+  <div class="success-banner" style="background:rgba(167,139,250,0.1);border-color:rgba(167,139,250,0.25);color:var(--accent3);">✏️ Editing watchlist item #<%= editItem.watchlist_id %></div>
   <% } %>
 
-  <% if (isAuthenticated) { %>
-  <!-- ADD / EDIT FORM -->
-  <div class="card">
-    <h2><%= editItem ? '✏️ Edit Watchlist Item' : '+ Add to Watchlist' %></h2>
-    <form action="<%= editItem ? '/watchlist/update' : '/watchlist/add' %>" method="POST" id="watchlistForm">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>"/>
-      <% if (editItem) { %>
-      <input type="hidden" name="watchlist_id" value="<%= editItem.watchlist_id %>"/>
+  <!-- ── GUEST HERO BANNER ── -->
+  <% if (!isAuthenticated) { %>
+  <div style="
+    background: linear-gradient(135deg, rgba(79,140,247,0.08), rgba(34,211,238,0.06));
+    border: 1px solid var(--border-2); border-radius: 20px;
+    padding: 2rem 2rem 2rem; margin-bottom: 1.75rem;
+    display: flex; align-items: center; gap: 2rem; flex-wrap: wrap;
+    position: relative; overflow: hidden;
+  ">
+    <div style="position:absolute;top:-40px;right:-40px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(79,140,247,0.12),transparent 70%);pointer-events:none;"></div>
+   <div style="
+  width:56px; height:56px; flex-shrink:0; border-radius:14px;
+  background:linear-gradient(135deg, var(--accent), var(--accent2));
+  box-shadow:0 0 24px rgba(79,140,247,0.3);
+  display:flex; align-items:center; justify-content:center;
+">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+    <circle cx="12" cy="12" r="3"/>
+  </svg>
+</div>
+    <div style="flex:1; min-width:200px;">
+      <div style="font-family:'DM Mono',monospace;font-size:0.72rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.4rem;">Guest Mode</div>
+      <h2 style="font-size:1.35rem;margin-bottom:0.4rem;color:var(--text);">You're browsing as a guest</h2>
+      <p style="margin:0;font-size:0.9rem;color:var(--text-2);line-height:1.6;">
+        You can add up to <strong style="color:var(--accent);">5 items</strong> to your temporary watchlist — saved in this browser session only.
+        <strong id="guestSlotMsg" style="color:var(--warning);"><%= 5 - guestCount %> slot<%= (5 - guestCount) !== 1 ? 's' : '' %> remaining.</strong>
+        Login or register to save your watchlist permanently and unlock all features.
+      </p>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:0.6rem;flex-shrink:0;">
+      <a href="/login" class="btn btn-primary" style="justify-content:center;">🔐 Login</a>
+      <a href="/register" class="btn btn-ghost" style="justify-content:center;">✨ Register Free</a>
+    </div>
+  </div>
+
+  <!-- guest slot progress bar -->
+  <div style="margin-bottom:1.75rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+      <span style="font-size:0.8rem;color:var(--muted);font-family:'DM Mono',monospace;">GUEST SLOTS USED</span>
+      <span id="guestSlotNum" style="font-size:0.8rem;font-weight:700;color:<%= guestCount >= 4 ? 'var(--warning)' : 'var(--accent)' %>"><%= guestCount %> / 5</span>
+    </div>
+    <div style="height:6px;background:var(--card);border-radius:999px;overflow:hidden;border:1px solid var(--border);">
+      <div id="guestSlotBar" style="height:100%;width:<%= (guestCount/5)*100 %>%;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width 0.4s ease;"></div>
+    </div>
+  </div>
+  <% } %>
+
+  <div style="display:grid;grid-template-columns:<% if (isAuthenticated || guestCount < 5) { %>1fr 340px<% } else { %>1fr<% } %>;gap:1.5rem;align-items:start;">
+
+    <!-- ── LEFT: WATCHLIST ITEMS ── -->
+    <div>
+      <% if (!watchlist || watchlist.length === 0) { %>
+      <div class="empty-state" style="margin:0;">
+        <div class="empty-icon">📋</div>
+        <h3>Your watchlist is empty</h3>
+        <p style="margin-bottom:1.25rem;">
+          <% if (!isAuthenticated) { %>
+            Search for patents or trademarks on the home page and click ♥ to add them here.
+          <% } else { %>
+            Use the form to add patents or trademarks you want to monitor.
+          <% } %>
+        </p>
+        <a href="/" class="btn btn-primary">🔍 Search Patents & Trademarks</a>
+      </div>
+      <% } else { %>
+
+      <!-- cards grid -->
+      <div id="watchlistCards" style="display:flex;flex-direction:column;gap:1rem;">
+        <% watchlist.forEach((w, i) => { %>
+        <%
+          const wType    = w.patent_id ? 'Patent' : 'Trademark';
+          const wTitle   = w.patent_title || w.trademark_title || 'Untitled';
+          const wNumber  = w.patent_number || w.trademark_number || '—';
+          const wOwner   = w.patent_owner || w.trademark_owner || '—';
+          const wStatus  = w.patent_status || w.trademark_status || null;
+          const wExpiry  = w.patent_expiry || w.trademark_expiry || null;
+          const wId      = w.display_id || ('WL-' + String(w.watchlist_id).padStart(5,'0'));
+          const isTm     = !w.patent_id;
+        %>
+        <div style="
+          background:var(--card);border:1px solid var(--border);border-radius:18px;
+          padding:1.4rem;position:relative;overflow:hidden;
+          animation:cardIn 0.35s ease-out both;
+          animation-delay:<%= i * 0.06 %>s;
+        ">
+          <!-- accent line -->
+          <div style="position:absolute;top:0;left:0;width:4px;height:100%;border-radius:4px 0 0 4px;background:linear-gradient(180deg,<%= isTm ? 'var(--accent2)' : 'var(--accent)' %>,<%= isTm ? 'var(--accent3)' : 'var(--accent2)' %>);"></div>
+
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+            <div style="flex:1;min-width:200px;padding-left:0.5rem;">
+              <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.5rem;flex-wrap:wrap;">
+                <span style="
+                  padding:0.18rem 0.6rem;border-radius:6px;font-size:0.68rem;
+                  font-family:'DM Mono',monospace;font-weight:600;
+                  <%= isTm ? 'background:rgba(34,211,238,0.12);color:var(--accent2);' : 'background:rgba(79,140,247,0.12);color:var(--accent);' %>
+                "><%= wNumber %></span>
+                <span style="
+                  padding:0.18rem 0.6rem;border-radius:6px;font-size:0.68rem;font-weight:600;
+                  background:rgba(255,255,255,0.05);color:var(--muted);
+                "><%= wType %></span>
+                <% if (wStatus) { %>
+                <span class="badge badge-<%= wStatus.toLowerCase() %>"><%= wStatus %></span>
+                <% } %>
+                <span style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted)"><%= wId %></span>
+              </div>
+              <div style="font-weight:700;font-size:1rem;color:var(--text);margin-bottom:0.3rem;line-height:1.4;"><%= wTitle %></div>
+              <div style="font-size:0.84rem;color:var(--text-2);margin-bottom:0.6rem;">👤 <%= wOwner %></div>
+              <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+                <% if (wExpiry) { %>
+                <span style="font-size:0.78rem;color:var(--muted);display:flex;align-items:center;gap:0.25rem;">📅 Expires <%= new Date(wExpiry).toLocaleDateString() %></span>
+                <% } %>
+                <% if (w.notes && w.notes !== '-') { %>
+                <span style="font-size:0.78rem;color:var(--muted);display:flex;align-items:center;gap:0.25rem;">📝 <%= w.notes %></span>
+                <% } %>
+              </div>
+            </div>
+
+            <!-- actions -->
+            <div style="display:flex;flex-direction:column;gap:0.5rem;flex-shrink:0;align-items:flex-end;">
+              <% if (isAuthenticated) { %>
+  <a href="/watchlist/edit/<%= w.watchlist_id %>" class="btn btn-ghost btn-sm">✏️ Edit</a>
+  <button type="button" class="btn btn-danger btn-sm"
+    onclick="removeWatchlistItem(<%= w.watchlist_id %>, '<%= csrfToken %>', this)">
+    🗑 Remove
+  </button>
+<% } else { %>
+  <button type="button" onclick="removeGuestItem(<%= i %>, this)" style="
+    display:inline-flex; align-items:center; gap:0.4rem;
+    padding:0.45rem 0.9rem; border-radius:9px;
+    border:1px solid rgba(239,68,68,0.25);
+    background:rgba(239,68,68,0.08); color:var(--danger);
+    font-size:0.78rem; font-weight:600; cursor:pointer;
+    transition:all 0.2s; font-family:'DM Sans',sans-serif;
+  "
+  onmouseover="this.style.background='rgba(239,68,68,0.18)'"
+  onmouseout="this.style.background='rgba(239,68,68,0.08)'">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+    Remove
+  </button>
+<% } %>
+            </div>
+          </div>
+        </div>
+        <% }) %>
+      </div>
+
       <% } %>
+    </div>
 
-      <!-- TYPE TOGGLE -->
-      <div class="type-toggle">
-        <button type="button" class="type-btn active" id="btn-patent" onclick="setWatchType('patent')">📋 Patent</button>
-        <button type="button" class="type-btn" id="btn-trademark" onclick="setWatchType('trademark')">™️ Trademark</button>
-      </div>
-      <input type="hidden" name="type" id="watchType" value="patent"/>
+    <!-- ── RIGHT: ADD FORM ── -->
+    <% if (isAuthenticated || guestCount < 5) { %>
+    <div style="position:sticky;top:80px;">
+      <div class="card" style="padding:1.5rem;">
+        <h2 style="font-size:1.1rem;margin-bottom:1.1rem;display:flex;align-items:center;gap:0.5rem;">
+          <%= editItem ? '✏️ Edit Item' : '＋ Add to Watchlist' %>
+        </h2>
 
-      <div class="form-grid">
-        <!-- Patent select -->
-        <div class="form-group" id="patentGroup">
-          <label>Patent *</label>
-          <select name="patent_id" id="patentSelect">
-            <option value="">Select Patent</option>
-            <% patents.forEach(p => { %>
-            <option value="<%= p.patent_id %>" <%= editItem && editItem.patent_id === p.patent_id ? 'selected' : '' %>>
-              <%= p.patent_number %> — <%= p.title %>
-            </option>
-            <% }) %>
-          </select>
-          <span class="error-msg" id="patentError">Please select a patent</span>
+        <form action="<%= isAuthenticated ? (editItem ? '/watchlist/update' : '/watchlist/add') : '/watchlist/add' %>" method="POST" id="watchlistForm">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>"/>
+          <% if (editItem) { %>
+          <input type="hidden" name="watchlist_id" value="<%= editItem.watchlist_id %>"/>
+          <% } %>
+
+          <div class="type-toggle" style="margin-bottom:1rem;width:100%;">
+            <button type="button" class="type-btn active" id="btn-patent" onclick="setWatchType('patent')" style="flex:1;">📋 Patent</button>
+            <button type="button" class="type-btn" id="btn-trademark" onclick="setWatchType('trademark')" style="flex:1;">™️ Trademark</button>
+          </div>
+          <input type="hidden" name="type" id="watchType" value="patent"/>
+
+          <div class="form-group" id="patentGroup" style="margin-bottom:0.85rem;">
+            <label>Patent *</label>
+            <select name="patent_id" id="patentSelect">
+              <option value="">Select Patent</option>
+              <% patents.forEach(p => { %>
+              <option value="<%= p.patent_id %>" <%= editItem && editItem.patent_id === p.patent_id ? 'selected' : '' %>>
+                <%= p.patent_number %> — <%= p.title.slice(0,50) %><%= p.title.length > 50 ? '…' : '' %>
+              </option>
+              <% }) %>
+            </select>
+            <span class="error-msg" id="patentError" style="display:none;color:var(--danger);font-size:0.78rem;margin-top:0.25rem;">Please select a patent</span>
+          </div>
+
+          <div class="form-group" id="trademarkGroup" style="display:none;margin-bottom:0.85rem;">
+            <label>Trademark *</label>
+            <select name="trademark_id" id="trademarkSelect">
+              <option value="">Select Trademark</option>
+              <% trademarks.forEach(t => { %>
+              <option value="<%= t.trademark_id %>" <%= editItem && editItem.trademark_id === t.trademark_id ? 'selected' : '' %>>
+                <%= t.trademark_number %> — <%= t.name.slice(0,50) %><%= t.name.length > 50 ? '…' : '' %>
+              </option>
+              <% }) %>
+            </select>
+            <span class="error-msg" id="trademarkError" style="display:none;color:var(--danger);font-size:0.78rem;margin-top:0.25rem;">Please select a trademark</span>
+          </div>
+
+          <div class="form-group" style="margin-bottom:1rem;">
+            <label>Notes <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
+            <textarea name="notes" placeholder="Why are you watching this?" style="min-height:70px;resize:vertical;"><%= editItem ? editItem.notes : '' %></textarea>
+          </div>
+
+          <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
+            <button type="submit" class="btn btn-primary" style="flex:1;">
+              <%= editItem ? '✅ Update' : '♥ Add to Watchlist' %>
+            </button>
+            <% if (editItem) { %>
+            <a href="/watchlist" class="btn btn-ghost">Cancel</a>
+            <% } %>
+          </div>
+        </form>
+
+        <% if (!isAuthenticated) { %>
+        <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);text-align:center;">
+          <p style="font-size:0.78rem;color:var(--muted);margin-bottom:0.6rem;">Items are lost when your session ends</p>
+          <a href="/register" class="btn btn-primary btn-sm" style="width:100%;justify-content:center;">✨ Register to Save Permanently</a>
         </div>
-
-        <!-- Trademark select -->
-        <div class="form-group" id="trademarkGroup" style="display:none;">
-          <label>Trademark *</label>
-          <select name="trademark_id" id="trademarkSelect">
-            <option value="">Select Trademark</option>
-            <% trademarks.forEach(t => { %>
-            <option value="<%= t.trademark_id %>" <%= editItem && editItem.trademark_id === t.trademark_id ? 'selected' : '' %>>
-              <%= t.trademark_number %> — <%= t.name %>
-            </option>
-            <% }) %>
-          </select>
-          <span class="error-msg" id="trademarkError">Please select a trademark</span>
-        </div>
-
-        <div class="form-group form-full">
-          <label>Notes</label>
-          <textarea name="notes" placeholder="Why are you watching this?"><%= editItem ? editItem.notes : '' %></textarea>
-        </div>
-      </div>
-
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary"><%= editItem ? 'Update Item' : 'Add to Watchlist' %></button>
-        <% if (editItem) { %>
-        <a href="/watchlist" class="btn btn-secondary">Cancel</a>
         <% } %>
       </div>
-    </form>
-  </div>
-  <% } else if (guestCount < 5) { %>
-  <div class="card">
-    <h2>Anonymous Watchlist</h2>
-    <p>You can add up to 5 items before registering. Your temporary watchlist is stored in this browser session.</p>
-    <form action="/watchlist/add" method="POST" id="watchlistForm">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>"/>
-
-      <div class="type-toggle">
-        <button type="button" class="type-btn active" id="btn-patent" onclick="setWatchType('patent')">📋 Patent</button>
-        <button type="button" class="type-btn" id="btn-trademark" onclick="setWatchType('trademark')">™️ Trademark</button>
-      </div>
-      <input type="hidden" name="type" id="watchType" value="patent"/>
-
-      <div class="form-grid">
-        <div class="form-group" id="patentGroup">
-          <label>Patent *</label>
-          <select name="patent_id" id="patentSelect">
-            <option value="">Select Patent</option>
-            <% patents.forEach(p => { %>
-            <option value="<%= p.patent_id %>"><%= p.patent_number %> — <%= p.title %></option>
-            <% }) %>
-          </select>
-          <span class="error-msg" id="patentError">Please select a patent</span>
-        </div>
-
-        <div class="form-group" id="trademarkGroup" style="display:none;">
-          <label>Trademark *</label>
-          <select name="trademark_id" id="trademarkSelect">
-            <option value="">Select Trademark</option>
-            <% trademarks.forEach(t => { %>
-            <option value="<%= t.trademark_id %>"><%= t.trademark_number %> — <%= t.name %></option>
-            <% }) %>
-          </select>
-          <span class="error-msg" id="trademarkError">Please select a trademark</span>
-        </div>
-
-        <div class="form-group form-full">
-          <label>Notes</label>
-          <textarea name="notes" placeholder="Why are you watching this?"></textarea>
-        </div>
-      </div>
-
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary">Add to Watchlist</button>
-      </div>
-    </form>
-  </div>
-  <% } else { %>
-  <div class="card">
-    <h2>Anonymous Watchlist Limit Reached</h2>
-    <p>You have reached the 5-item anonymous limit. Please log in or register to continue adding watchlist items and save your list permanently.</p>
-    <a href="/login" class="btn btn-primary">Login</a>
-    <a href="/register" class="btn btn-secondary">Register</a>
-  </div>
-  <% } %>
-
-  <!-- LIST -->
-  <div class="card">
-    <h2>Watchlist Items</h2>
-    <% if (!watchlist || watchlist.length === 0) { %>
-      <p>No watchlist items are available yet.</p>
+    </div>
     <% } else { %>
-    <div class="table-warp">
-    <table>
-      <thead>
-        <tr>
-          <th>Watchlist ID</th><th>Type</th><th>Name/Title</th><th>Number</th><th>Owner</th><th>Status</th><th>Expiry</th><th>Added By</th><th>Notes</th><th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% watchlist.forEach(w => { %>
-        <tr>
-          <td class="id-cell"><%= w.display_id ? w.display_id : 'WL-' + String(w.watchlist_id).padStart(5, '0') %></td>
-          <td>
-            <% if (w.patent_id) { %>
-            <span class="badge badge-patent">Patent</span>
-            <% } else { %>
-            <span class="badge badge-trademark">Trademark</span>
-            <% } %>
-          </td>
-          <td><%= w.patent_title || w.trademark_title || '-' %></td>
-          <td class="id-cell"><%= w.patent_number || w.trademark_number || '-' %></td>
-          <td><%= w.patent_owner || w.trademark_owner || '-' %></td>
-          <td>
-            <% const status = w.patent_status || w.trademark_status; %>
-            <% if (status) { %>
-            <span class="badge badge-<%= status.toLowerCase() %>"><%= status %></span>
-            <% } else { %> - <% } %>
-          </td>
-          <td><%= (w.patent_expiry || w.trademark_expiry) ? new Date(w.patent_expiry || w.trademark_expiry).toLocaleDateString() : '-' %></td>
-          <td><%= w.user_id || '-' %></td>
-          <td><%= w.notes || '-' %></td>
-          <td>
-            <% if (isAuthenticated) { %>
-<a href="/watchlist/edit/<%= w.watchlist_id %>" class="btn btn-warning btn-sm">Edit</a>
-<button type="button" class="btn btn-danger btn-sm" onclick="removeWatchlistItem(<%= w.watchlist_id %>, '<%= csrfToken %>', this)">Remove</button>
-<% } else { %>
-—
-<% } %>
-          </td>
-        </tr>
-        <% }) %>
-      </tbody>
-    </table>
+    <!-- limit reached -->
+    <div class="card" style="padding:1.75rem;text-align:center;">
+      <div style="font-size:2.5rem;margin-bottom:0.75rem;">🔒</div>
+      <h3 style="margin-bottom:0.5rem;">Guest Limit Reached</h3>
+      <p style="font-size:0.88rem;color:var(--text-2);margin-bottom:1.25rem;">You've used all 5 guest slots. Register free to save unlimited items permanently.</p>
+      <div style="display:flex;flex-direction:column;gap:0.6rem;">
+        <a href="/register" class="btn btn-primary" style="justify-content:center;">✨ Register Free</a>
+        <a href="/login" class="btn btn-ghost" style="justify-content:center;">🔐 Login</a>
+      </div>
     </div>
     <% } %>
+
   </div>
 </div>
 
 <script>
 function setWatchType(type) {
-    document.getElementById('watchType').value = type;
-    document.getElementById('patentGroup').style.display = type === 'patent' ? 'flex' : 'none';
-    document.getElementById('trademarkGroup').style.display = type === 'trademark' ? 'flex' : 'none';
-    document.getElementById('btn-patent').classList.toggle('active', type === 'patent');
-    document.getElementById('btn-trademark').classList.toggle('active', type === 'trademark');
+  document.getElementById('watchType').value = type;
+  document.getElementById('patentGroup').style.display    = type === 'patent'    ? 'block' : 'none';
+  document.getElementById('trademarkGroup').style.display = type === 'trademark' ? 'block' : 'none';
+  document.getElementById('btn-patent').classList.toggle('active',    type === 'patent');
+  document.getElementById('btn-trademark').classList.toggle('active', type === 'trademark');
 }
 
 const watchlistForm = document.getElementById('watchlistForm');
 if (watchlistForm) {
   watchlistForm.addEventListener('submit', function(e) {
-      let valid = true;
-      const type = document.getElementById('watchType').value;
-      const patent = document.getElementById('patentSelect');
-      const trademark = document.getElementById('trademarkSelect');
-
-      document.querySelectorAll('.error-msg').forEach(el => el.style.display = 'none');
-      document.querySelectorAll('select').forEach(el => el.classList.remove('error'));
-
-      if (type === 'patent' && !patent.value) {
-          patent.classList.add('error');
-          document.getElementById('patentError').style.display = 'block';
-          valid = false;
-      }
-      if (type === 'trademark' && !trademark.value) {
-          trademark.classList.add('error');
-          document.getElementById('trademarkError').style.display = 'block';
-          valid = false;
-      }
-
-       if (!valid) e.preventDefault();
+    let valid = true;
+    const type = document.getElementById('watchType').value;
+    const patent    = document.getElementById('patentSelect');
+    const trademark = document.getElementById('trademarkSelect');
+    document.querySelectorAll('.error-msg').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('select').forEach(el => el.classList.remove('error'));
+    if (type === 'patent' && !patent.value) {
+      patent.classList.add('error');
+      document.getElementById('patentError').style.display = 'block';
+      valid = false;
+    }
+    if (type === 'trademark' && !trademark.value) {
+      trademark.classList.add('error');
+      document.getElementById('trademarkError').style.display = 'block';
+      valid = false;
+    }
+    if (!valid) e.preventDefault();
   });
+}
+
+async function removeGuestItem(index, btn) {
+  if (!confirm('Remove from watchlist?')) return;
+  const csrfMeta = document.querySelector('input[name="_csrf"]');
+  const csrf = csrfMeta ? csrfMeta.value : '';
+  try {
+    const response = await fetch(`/watchlist/delete/${index}`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+      },
+      body: `_csrf=${encodeURIComponent(csrf)}`
+    });
+    const json = await response.json().catch(() => null);
+    if (response.ok && json && json.success) {
+      // animate card out
+      const card = btn.closest('div[style*="border-radius:18px"]');
+      if (card) {
+        card.style.transition = 'opacity 0.3s, transform 0.3s';
+        card.style.opacity = '0';
+        card.style.transform = 'translateX(20px)';
+        setTimeout(() => {
+          card.remove();
+          // update slot counter and progress bar
+          const remaining = document.querySelectorAll('div[style*="border-radius:18px"]').length;
+          const slotNum = document.getElementById('guestSlotNum');
+          const slotBar = document.getElementById('guestSlotBar');
+          const slotMsg = document.getElementById('guestSlotMsg');
+          if (slotNum) slotNum.textContent = `${remaining} / 5`;
+          if (slotBar) slotBar.style.width = `${(remaining / 5) * 100}%`;
+          if (slotMsg) slotMsg.textContent = `${5 - remaining} slot${(5 - remaining) !== 1 ? 's' : ''} remaining.`;
+          // show empty state
+          const container = document.getElementById('watchlistCards');
+          if (container && remaining === 0) {
+            container.innerHTML = `
+              <div class="empty-state" style="margin:0;">
+                <div class="empty-icon">📋</div>
+                <h3>Your watchlist is empty</h3>
+                <p style="margin-bottom:1.25rem;">Search for patents or trademarks and click ♥ to add them here.</p>
+                <a href="/" class="btn btn-primary">🔍 Search Patents & Trademarks</a>
+              </div>`;
+          }
+        }, 300);
+      }
+    } else {
+      alert(json?.message || 'Could not remove item.');
+    }
+  } catch(err) {
+    console.error('Guest remove failed:', err);
+    alert('Could not remove item. Please try again.');
+  }
 }
 
 async function removeWatchlistItem(id, csrf, btn) {
@@ -271,15 +393,22 @@ async function removeWatchlistItem(id, csrf, btn) {
     });
     const json = await response.json().catch(() => null);
     if (response.ok && json && json.success) {
-      const row = btn.closest('tr');
-      if (row) {
-        row.style.transition = 'opacity 0.3s';
-        row.style.opacity = '0';
+      const card = btn.closest('[style*="border-radius:18px"]');
+      if (card) {
+        card.style.transition = 'opacity 0.3s, transform 0.3s';
+        card.style.opacity = '0';
+        card.style.transform = 'translateX(20px)';
         setTimeout(() => {
-          row.remove();
-          const tbody = document.querySelector('tbody');
-          if (tbody && tbody.querySelectorAll('tr').length === 0) {
-            tbody.closest('.card').innerHTML = '<h2>Watchlist Items</h2><p>No watchlist items are available yet.</p>';
+          card.remove();
+          const container = document.querySelector('[style*="flex-direction:column;gap:1rem"]');
+          if (container && container.querySelectorAll('[style*="border-radius:18px"]').length === 0) {
+            container.innerHTML = `
+              <div class="empty-state" style="margin:0;">
+                <div class="empty-icon">📋</div>
+                <h3>Your watchlist is empty</h3>
+                <p style="margin-bottom:1.25rem;">Search for patents or trademarks and click ♥ to add them here.</p>
+                <a href="/" class="btn btn-primary">🔍 Search Patents & Trademarks</a>
+              </div>`;
           }
         }, 300);
       }
@@ -291,7 +420,10 @@ async function removeWatchlistItem(id, csrf, btn) {
     alert('Could not remove item. Please try again.');
   }
 }
-</script>
 
+document.addEventListener('DOMContentLoaded', () => {
+  document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
+});
+</script>
 </body>
 </html>

@@ -501,23 +501,72 @@ app.post('/register', asyncHandler(async (req, res) => {
     // Admins can promote via /admin/users.
     const { username, email, full_name, password, confirm_password } = req.body;
     const errors = [];
-    if (!username || !username.trim()) errors.push('Username is required.');
-    else if (username.trim().length < 3) errors.push('Username must be at least 3 characters.');
-    else if (username.trim().length > 50) errors.push('Username must be under 50 characters.');
-    else if (!/^[a-zA-Z_]+$/.test(username.trim())) errors.push('Username: letters and underscores only (no numbers).');
-    if (!email || !email.trim()) errors.push('Email is required.');
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) errors.push('Please enter a valid email address.');
-    if (!full_name || !full_name.trim()) errors.push('Full name is required.');
-    else if (full_name.trim().length > 255) errors.push('Full name must be under 255 characters.');
-    else if (!/^[a-zA-Z\s'-]+$/.test(full_name.trim())) errors.push('Full name: letters, spaces, hyphens and apostrophes only (no numbers).');
-    if (!password) errors.push('Password is required.');
-    else if (password.length < 8) errors.push('Password must be at least 8 characters.');
-    else if (password.length > 100) errors.push('Password must be under 100 characters.');
-    if (password !== confirm_password) errors.push('Passwords do not match.');
-    if (errors.length) return res.render('register', { errors, formData: req.body });
+    // ── username ──
+if (!username || !username.trim()) {
+    errors.push('Username is required.');
+} else if (username.trim().length < 4) {
+    errors.push('Username must be at least 4 characters long.');
+} else if (username.trim().length > 50) {
+    errors.push('Username must be under 50 characters.');
+} else if (!/^[a-zA-Z_]+$/.test(username.trim())) {
+    errors.push('Username can only contain letters and underscores — no numbers or special characters.');
+} else if (/^_+$/.test(username.trim())) {
+    errors.push('Username cannot be only underscores.');
+}
+
+// ── full name ──
+if (!full_name || !full_name.trim()) {
+    errors.push('Full name is required.');
+} else if (full_name.trim().length < 5) {
+    errors.push('Full name must be at least 5 characters — please enter your first and last name.');
+} else if (full_name.trim().length > 255) {
+    errors.push('Full name must be under 255 characters.');
+} else if (!/^[a-zA-Z\s'-]+$/.test(full_name.trim())) {
+    errors.push('Full name can only contain letters, spaces, hyphens and apostrophes.');
+} else if (!/\s/.test(full_name.trim())) {
+    errors.push('Please enter your full name — first and last name are required.');
+} else if (full_name.trim().split(/\s+/).some(part => part.replace(/['-]/g, '').length < 2)) {
+    errors.push('Each part of your name must be at least 2 characters long.');
+}
+
+// ── email ──
+if (!email || !email.trim()) {
+    errors.push('Email address is required.');
+} else {
+    const emailVal = email.trim().toLowerCase();
+    // must have exactly one @
+    const atParts = emailVal.split('@');
+    if (atParts.length !== 2) {
+        errors.push('Email address must contain exactly one @ symbol.');
+    } else {
+        const [localPart, domainPart] = atParts;
+        if (!localPart || localPart.length < 1) {
+            errors.push('Email address is missing the part before @.');
+        } else if (!domainPart || !domainPart.includes('.')) {
+            errors.push('Email domain must contain a dot — e.g. gmail.com or uct.ac.za.');
+        } else {
+            const domainParts = domainPart.split('.');
+            const allPartsValid = domainParts.every(p => p.length >= 1);
+            const tld = domainParts[domainParts.length - 1];
+            if (!allPartsValid) {
+                errors.push('Email domain looks invalid — please check it.');
+            } else if (tld.length < 2) {
+                errors.push('Email domain ending must be at least 2 characters — e.g. .com, .za, .co.za.');
+            } else if (!/^[a-zA-Z0-9._%+\-]+$/.test(localPart)) {
+                errors.push('Email address contains invalid characters before the @ symbol.');
+            } else if (!/^[a-zA-Z0-9.\-]+$/.test(domainPart)) {
+                errors.push('Email domain contains invalid characters.');
+            }
+        }
+    }
+}
     try {
-        const existing = await dbQ('SELECT user_id FROM users WHERE (username=? OR email=?) AND user_id<>0', [username.trim(), email.trim()]);
-        if (existing.length) return res.render('register', { errors: ['Username or email already exists.'], formData: req.body });
+        const existingUsername = await dbQ('SELECT user_id FROM users WHERE username=?', [username.trim()]);
+const existingEmail = await dbQ('SELECT user_id FROM users WHERE email=?', [email.trim()]);
+const existingErrors = [];
+if (existingUsername.length) existingErrors.push(`The username "${username.trim()}" is already taken. Please choose a different one.`);
+if (existingEmail.length) existingErrors.push(`An account with the email "${email.trim()}" already exists. Try signing in instead.`);
+if (existingErrors.length) return res.render('register', { errors: existingErrors, formData: req.body });
         const hash = await bcrypt.hash(password, 10);
         await dbQ('INSERT INTO users (username, email, password_hash, full_name, role) VALUES (?,?,?,?,?)',
             [username.trim(), email.trim(), hash, (full_name || '').trim(), 'Viewer']);
@@ -1224,7 +1273,7 @@ app.post('/watchlist/add', asyncHandler(async (req, res) => {
             if (!req.session.guestWatchlist) req.session.guestWatchlist = [];
             if (req.session.guestWatchlist.length >= 5) {
                 req.flash('error', 'Anonymous watchlist is limited to 5 items. Upgrade on the pricing page to add more.');
-                return res.redirect('/pricing');
+                return res.redirect('/pricing?reason=watchlist_full');
             }
             req.session.guestWatchlist.push({
                 type,
@@ -1278,8 +1327,23 @@ app.post('/watchlist/update', requireLogin, asyncHandler(async (req, res) => {
     } catch(e) { req.flash('error', 'Could not update.'); res.redirect('/watchlist'); }
 }));
 
-app.post('/watchlist/delete/:id', requireLogin, asyncHandler(async (req, res) => {
+app.post('/watchlist/delete/:id', asyncHandler(async (req, res) => {
     const isAjax = req.xhr || req.headers['x-requested-with'] === 'XMLHttpRequest';
+
+    // ── GUEST: remove by array index ──
+    if (!req.session.user) {
+        const idx = parseInt(req.params.id);
+        if (!req.session.guestWatchlist) req.session.guestWatchlist = [];
+        if (isNaN(idx) || idx < 0 || idx >= req.session.guestWatchlist.length) {
+            if (isAjax) return res.status(404).json({ success: false, message: 'Item not found.' });
+            return res.redirect('/watchlist');
+        }
+        req.session.guestWatchlist.splice(idx, 1);
+        if (isAjax) return res.json({ success: true, message: 'Removed from watchlist.' });
+        return res.redirect('/watchlist?success=deleted');
+    }
+
+    // ── LOGGED IN: remove by watchlist_id ──
     try {
         const rows = await dbQ('SELECT * FROM watchlist WHERE watchlist_id=?', [req.params.id]);
         if (!rows.length) {
@@ -1328,7 +1392,7 @@ app.post('/watchlist/add-selected', asyncHandler(async (req, res) => {
                 return sendResponse(409, false, 'This item is already in your watchlist.');
             }
             if (req.session.guestWatchlist.length >= 5) {
-                return sendResponse(403, false, 'Anonymous watchlist is limited to 5 items. Upgrade on the pricing page to add more.', '/pricing');
+               return sendResponse(403, false, 'Anonymous watchlist is limited to 5 items. Upgrade on the pricing page to add more.', '/pricing?reason=watchlist_full');
             }
             req.session.guestWatchlist.push({
                 type,
@@ -1429,7 +1493,11 @@ app.get('/trends/export/csv', requireLogin, asyncHandler(async (req, res) => {
 }));
 
 // ─── PRICING & API ────────────────────────────────────────────────────────────
-app.get('/pricing', (req, res) => { res.render('pricing'); });
+app.get('/pricing', (req, res) => {
+    const fromWatchlist = req.query.reason === 'watchlist_full';
+    const guestCount = req.session.guestWatchlist ? req.session.guestWatchlist.length : 0;
+    res.render('pricing', { fromWatchlist, guestCount });
+});
 
 app.post('/api/ai-insights', requireLogin, asyncHandler(async (req, res) => {
     const { industryStats, topOwners } = req.body;

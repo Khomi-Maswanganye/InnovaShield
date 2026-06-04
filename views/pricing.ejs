@@ -31,16 +31,17 @@
       margin-bottom: 1rem; opacity: 0.85;
     }
     .pricing-hero h1 {
-      font-size: clamp(2rem, 5vw, 3.5rem);
-      font-weight: 800; letter-spacing: -2px;
-      margin-bottom: 1rem;
-    }
-    .pricing-hero h1 span {
-      background: linear-gradient(135deg, var(--accent), var(--accent-2));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 800; letter-spacing: -2px;
+  margin-bottom: 1rem; text-align: center;
+}
+.pricing-hero h1 span {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: inline-block;
+}
     .pricing-hero p {
       font-size: 1.05rem; color: var(--text-3);
       max-width: 500px; margin: 0 auto 1rem;
@@ -227,8 +228,34 @@
 
 <!-- PRICING HERO -->
 <div class="pricing-hero">
+  <% if (locals.fromWatchlist) { %>
+<div style="
+  max-width:620px; margin:0 auto 2rem;
+  background:linear-gradient(135deg,rgba(245,158,11,0.1),rgba(239,68,68,0.08));
+  border:1px solid rgba(245,158,11,0.3); border-radius:16px;
+  padding:1.25rem 1.5rem; display:flex; align-items:flex-start; gap:1rem; text-align:left;
+">
+  <div style="
+    width:40px; height:40px; flex-shrink:0; border-radius:10px;
+    background:rgba(245,158,11,0.15); display:flex; align-items:center; justify-content:center;
+  ">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+      <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+  </div>
+  <div>
+    <div style="font-weight:700;font-size:0.95rem;color:var(--text);margin-bottom:0.3rem;">You've reached the guest watchlist limit</div>
+    <p style="font-size:0.88rem;color:var(--text-2);margin:0;line-height:1.6;">
+      You've used all <strong style="color:var(--warning);">5 free slots</strong> on your guest watchlist.
+      Upgrade to <strong style="color:var(--accent);">Pro</strong> for unlimited watchlist items, AI insights, and no ads —
+      or <a href="/register" style="color:var(--accent2);font-weight:600;text-decoration:underline;">register free</a> to save your current list permanently.
+    </p>
+  </div>
+</div>
+<% } %>
   <p class="pricing-eyebrow">Simple, Transparent Pricing</p>
-  <h1>Invert in Yours <span>IP Intelligence</span></h1>
+<h1>Invest in Your<br/><span>IP Intelligence</span></h1>
   <p>From individual inventors to enterprise legal teams — InnovaShield scales with you.</p>
 
   <!-- BILLING TOGGLE -->

@@ -3,77 +3,283 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>InnovaShield – Create User</title>
+  <title>InnovaShield – Create Account</title>
   <link rel="stylesheet" href="/style.css"/>
   <script>(function(){ document.documentElement.setAttribute('data-theme', localStorage.getItem('theme')||'dark'); })();</script>
   <style>
-    .auth-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
-    .auth-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 2.5rem; width: 100%; max-width: 480px; }
-    .auth-logo { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem; }
-    .auth-logo svg { width: 28px; height: 28px; stroke: var(--accent); fill: none; stroke-width: 1.5; }
-    .auth-logo span { font-size: 1.2rem; font-weight: 700; }
-    .auth-logo span span { color: var(--accent); }
-    .back-link { font-size: 0.85rem; color: var(--accent); margin-bottom: 1rem; display: block; }
-    .auth-title { font-size: 1.3rem; font-weight: 700; margin-bottom: 1.5rem; }
-    .form-group { margin-bottom: 1rem; }
-    .form-group label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 0.4rem; color: var(--text-2); }
-    .form-group label span { color: #f87171; }
-    .form-group input, .form-group select { width: 100%; padding: 0.6rem 0.9rem; background: var(--input-bg, var(--bg-2)); border: 1px solid var(--border); border-radius: 8px; color: var(--text-1); font-size: 0.95rem; box-sizing: border-box; }
-    .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--accent); }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    .role-info { font-size: 0.75rem; color: var(--text-3); margin-top: 0.3rem; }
-    .auth-btn { width: 100%; padding: 0.75rem; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 0.5rem; }
-    .auth-btn:hover { opacity: 0.9; }
-    .auth-errors { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1.25rem; }
-    .auth-errors p { color: #f87171; font-size: 0.875rem; margin: 0.2rem 0; }
+    .auth-wrap {
+      min-height: 100vh; display: flex; align-items: center;
+      justify-content: center; padding: 2rem;
+    }
+    .auth-outer {
+      width: 100%; max-width: 580px;
+      animation: heroFadeUp 0.6s ease-out both;
+    }
+
+    /* ── logo bar ── */
+    .auth-logo {
+      display: flex; align-items: center; gap: 0.65rem;
+      justify-content: center; margin-bottom: 2rem;
+    }
+    .auth-logo-mark {
+      width: 38px; height: 38px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 20px rgba(79,140,247,0.4);
+    }
+    .auth-logo-mark svg { width: 20px; height: 20px; fill: #fff; }
+    .auth-logo-text {
+      font-family: 'Syne', sans-serif; font-weight: 800;
+      font-size: 1.25rem; letter-spacing: -0.02em; color: var(--text);
+    }
+    .auth-logo-text span { color: var(--accent); }
+
+    /* ── card ── */
+    .auth-card {
+      background: var(--card); border: 1px solid var(--border-2);
+      border-radius: 22px; padding: 2.5rem 2.5rem 2rem;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+      position: relative; overflow: hidden;
+    }
+    .auth-card::before {
+      content: ''; position: absolute; top: -60px; right: -60px;
+      width: 220px; height: 220px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(79,140,247,0.1), transparent 70%);
+      pointer-events: none;
+    }
+
+    /* ── header ── */
+    .auth-header { margin-bottom: 1.75rem; }
+    .auth-eyebrow {
+      font-family: 'DM Mono', monospace; font-size: 0.7rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent);
+      margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem;
+    }
+    .auth-eyebrow::before {
+      content: ''; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent); display: inline-block;
+    }
+    .auth-header h1 {
+      font-size: 1.9rem; font-weight: 800; letter-spacing: -0.03em;
+      color: var(--text); margin-bottom: 0.4rem; line-height: 1.15;
+    }
+    .auth-header p {
+      font-size: 0.88rem; color: var(--text-2); line-height: 1.6; margin: 0;
+    }
+
+    /* ── errors ── */
+    .auth-errors {
+      background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25);
+      border-radius: 12px; padding: 0.85rem 1rem; margin-bottom: 1.5rem;
+      display: flex; flex-direction: column; gap: 0.25rem;
+    }
+    .auth-errors p {
+      color: var(--danger); font-size: 0.85rem; margin: 0;
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+
+    /* ── form ── */
+    .form-row-2 {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+    }
+    .auth-form .form-group { margin-bottom: 1.1rem; }
+    .auth-form .form-group label {
+      display: block; font-size: 0.82rem; font-weight: 600;
+      color: var(--text-2); margin-bottom: 0.4rem; letter-spacing: 0.01em;
+    }
+    .auth-form .form-group label span { color: var(--danger); margin-left: 2px; }
+    .auth-form .form-group input {
+      width: 100%; padding: 0.7rem 1rem;
+      background: var(--surface); border: 1px solid var(--border-2);
+      border-radius: 10px; color: var(--text);
+      font-family: 'DM Sans', sans-serif; font-size: 0.93rem;
+      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+      box-sizing: border-box;
+    }
+    .auth-form .form-group input::placeholder { color: var(--muted); }
+    .auth-form .form-group input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(79,140,247,0.12);
+    }
+    .auth-form .form-group input:valid:not(:placeholder-shown) {
+      border-color: rgba(16,185,129,0.4);
+    }
+    .field-hint {
+      font-size: 0.74rem; color: var(--muted); margin-top: 0.3rem;
+    }
+
+    /* ── divider ── */
+    .auth-divider {
+      height: 1px; background: var(--border); margin: 1.5rem 0;
+    }
+
+    /* ── submit ── */
+    .auth-btn {
+      width: 100%; padding: 0.85rem;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff; border: none; border-radius: 12px;
+      font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700;
+      cursor: pointer; letter-spacing: 0.01em;
+      transition: opacity 0.2s, transform 0.2s;
+      box-shadow: 0 4px 20px rgba(79,140,247,0.3);
+    }
+    .auth-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+
+    /* ── footer ── */
+    .auth-footer {
+      text-align: center; margin-top: 1.25rem;
+      font-size: 0.84rem; color: var(--muted);
+    }
+    .auth-footer a { color: var(--accent); font-weight: 600; }
+    .auth-footer a:hover { text-decoration: underline; }
+
+    /* ── viewer badge ── */
+    .viewer-badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.35rem 0.85rem; border-radius: 20px;
+      background: rgba(79,140,247,0.08); border: 1px solid rgba(79,140,247,0.2);
+      font-size: 0.78rem; font-weight: 600; color: var(--accent);
+      margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 520px) {
+      .auth-card { padding: 1.75rem 1.25rem; }
+      .form-row-2 { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
 <div class="page-bg"></div>
 <div class="auth-wrap">
-  <div class="auth-card">
+  <div class="auth-outer">
+
+    <!-- logo -->
     <div class="auth-logo">
-      <svg viewBox="0 0 24 24"><path d="M12 2L3 7l9 5 9-5-9-5z"/><path d="M3 17l9 5 9-5"/><path d="M3 12l9 5 9-5"/></svg>
-      <span>Innova<span>Shield</span></span>
+      <div class="auth-logo-mark">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2L3 7l9 5 9-5-9-5z"/>
+          <path d="M3 17l9 5 9-5"/>
+          <path d="M3 12l9 5 9-5"/>
+        </svg>
+      </div>
+      <div class="auth-logo-text">Innova<span>Shield</span></div>
     </div>
-    <a href="/login" class="back-link">← Back to Login</a>
-    <h1 class="auth-title">Create Account</h1>
-    <p style="font-size:0.85rem;color:var(--text-2);margin-bottom:1.25rem;">New accounts start with <strong>Viewer</strong> access. An admin can promote your role after you sign up.</p>
 
-    <% if (errors && errors.length) { %>
-    <div class="auth-errors">
-      <% errors.forEach(e => { %><p>⚠ <%= e %></p><% }) %>
+    <!-- card -->
+    <div class="auth-card">
+
+      <!-- header -->
+      <div class="auth-header">
+        <div class="auth-eyebrow">New Account</div>
+        <h1>Create your account</h1>
+        <p>Join InnovaShield to monitor patents, track trademarks and get AI-powered IP insights.</p>
+      </div>
+
+      <!-- viewer badge -->
+      <div class="viewer-badge">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        New accounts start as Viewer — an admin can upgrade your role
+      </div>
+
+      <!-- errors -->
+      <% if (errors && errors.length) { %>
+      <div class="auth-errors">
+        <% errors.forEach(e => { %>
+        <p>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <%= e %>
+        </p>
+        <% }) %>
+      </div>
+      <% } %>
+
+      <!-- form -->
+      <form action="/register" method="POST" id="regForm" class="auth-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>"/>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label>Username <span>*</span></label>
+            <input type="text" name="username"
+              value="<%= formData.username || '' %>"
+              maxlength="50"
+              pattern="^[a-zA-Z_]+$"
+              title="Letters and underscores only"
+              required
+              placeholder="e.g. jsmith"
+              autocomplete="username"/>
+            <div class="field-hint">Letters and underscores only</div>
+          </div>
+          <div class="form-group">
+            <label>Full Name <span>*</span></label>
+            <input type="text" name="full_name"
+              value="<%= formData.full_name || '' %>"
+              maxlength="255"
+              pattern="^[a-zA-Z\s'-]+$"
+              title="Letters, spaces, hyphens and apostrophes only"
+              required
+              placeholder="e.g. John Smith"
+              autocomplete="name"/>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Email Address <span>*</span></label>
+          <input type="email" name="email"
+            value="<%= formData.email || '' %>"
+            maxlength="255"
+            required
+            placeholder="john@company.com"
+            autocomplete="email"/>
+        </div>
+
+        <div class="auth-divider"></div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label>Password <span>*</span></label>
+            <input type="password" name="password"
+              minlength="8" maxlength="100"
+              required
+              placeholder="Minimum 8 characters"
+              autocomplete="new-password"/>
+          </div>
+          <div class="form-group">
+            <label>Confirm Password <span>*</span></label>
+            <input type="password" name="confirm_password"
+              minlength="8" maxlength="100"
+              required
+              placeholder="Repeat your password"
+              autocomplete="new-password"/>
+          </div>
+        </div>
+
+        <button type="submit" class="auth-btn">
+          Create Account →
+        </button>
+      </form>
+
+      <!-- footer -->
+      <!-- footer -->
+      <div class="auth-footer" style="display:flex; flex-direction:column; gap:0.5rem;">
+        <a href="javascript:history.back()" style="
+          display:inline-flex; align-items:center; gap:0.4rem;
+          font-size:0.84rem; color:var(--text-2); font-weight:500;
+        ">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"/>
+            <polyline points="12 19 5 12 12 5"/>
+          </svg>
+          Go back
+        </a>
+        Already have an account? <a href="/login">Sign in</a>
+      </div>
+
     </div>
-    <% } %>
-
-    <form action="/register" method="POST" id="regForm">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>"/>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Username <span>*</span></label>
-          <input type="text" name="username" value="<%= formData.username || '' %>" maxlength="50" pattern="^[a-zA-Z_]+$" title="Letters and underscores only (no numbers)" required placeholder="jsmith"/>
-        </div>
-        <div class="form-group">
-          <label>Full Name <span>*</span></label>
-          <input type="text" name="full_name" value="<%= formData.full_name || '' %>" maxlength="255" pattern="^[a-zA-Z\s'-]+$" title="Letters, spaces, hyphens and apostrophes only (no numbers)" required placeholder="John Smith"/>
-        </div>
-      </div>
-      <div class="form-group">
-        <label>Email Address <span>*</span></label>
-        <input type="email" name="email" value="<%= formData.email || '' %>" maxlength="255" required placeholder="john@company.com"/>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Password <span>*</span></label>
-          <input type="password" name="password" minlength="8" maxlength="100" required placeholder="Min. 8 characters"/>
-        </div>
-        <div class="form-group">
-          <label>Confirm Password <span>*</span></label>
-          <input type="password" name="confirm_password" minlength="8" maxlength="100" required placeholder="Repeat password"/>
-        </div>
-      </div>
-      <button type="submit" class="auth-btn">Create Account →</button>
-    </form>
   </div>
 </div>
 </body>
