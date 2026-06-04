@@ -207,14 +207,11 @@
           <td><%= w.notes || '-' %></td>
           <td>
             <% if (isAuthenticated) { %>
-            <a href="/watchlist/edit/<%= w.watchlist_id %>" class="btn btn-warning btn-sm">Edit</a>
-            <form action="/watchlist/delete/<%= w.watchlist_id %>" method="POST" style="display:inline" onsubmit="return confirm('Remove from watchlist?')">
-              <input type="hidden" name="_csrf" value="<%= csrfToken %>"/>
-              <button type="submit" class="btn btn-danger btn-sm">Remove</button>
-            </form>
-            <% } else { %>
-            —
-            <% } %>
+<a href="/watchlist/edit/<%= w.watchlist_id %>" class="btn btn-warning btn-sm">Edit</a>
+<button type="button" class="btn btn-danger btn-sm" onclick="removeWatchlistItem(<%= w.watchlist_id %>, '<%= csrfToken %>', this)">Remove</button>
+<% } else { %>
+—
+<% } %>
           </td>
         </tr>
         <% }) %>
@@ -258,6 +255,41 @@ if (watchlistForm) {
 
        if (!valid) e.preventDefault();
   });
+}
+
+async function removeWatchlistItem(id, csrf, btn) {
+  if (!confirm('Remove from watchlist?')) return;
+  try {
+    const response = await fetch(`/watchlist/delete/${id}`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+      },
+      body: `_csrf=${encodeURIComponent(csrf)}`
+    });
+    const json = await response.json().catch(() => null);
+    if (response.ok && json && json.success) {
+      const row = btn.closest('tr');
+      if (row) {
+        row.style.transition = 'opacity 0.3s';
+        row.style.opacity = '0';
+        setTimeout(() => {
+          row.remove();
+          const tbody = document.querySelector('tbody');
+          if (tbody && tbody.querySelectorAll('tr').length === 0) {
+            tbody.closest('.card').innerHTML = '<h2>Watchlist Items</h2><p>No watchlist items are available yet.</p>';
+          }
+        }, 300);
+      }
+    } else {
+      alert(json?.message || 'Could not remove item. Please try again.');
+    }
+  } catch (err) {
+    console.error('Remove failed:', err);
+    alert('Could not remove item. Please try again.');
+  }
 }
 </script>
 

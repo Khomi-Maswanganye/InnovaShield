@@ -1279,15 +1279,24 @@ app.post('/watchlist/update', requireLogin, asyncHandler(async (req, res) => {
 }));
 
 app.post('/watchlist/delete/:id', requireLogin, asyncHandler(async (req, res) => {
+    const isAjax = req.xhr || req.headers['x-requested-with'] === 'XMLHttpRequest';
     try {
         const rows = await dbQ('SELECT * FROM watchlist WHERE watchlist_id=?', [req.params.id]);
-        if (!rows.length) return res.redirect('/watchlist');
+        if (!rows.length) {
+            if (isAjax) return res.status(404).json({ success: false, message: 'Item not found.' });
+            return res.redirect('/watchlist');
+        }
         if (req.session.user.role !== 'Admin' && rows[0].user_id !== req.session.user.user_id) {
+            if (isAjax) return res.status(403).json({ success: false, message: 'Access denied.' });
             return res.status(403).render('error', { message: 'Access denied.' });
         }
         await dbQ('DELETE FROM watchlist WHERE watchlist_id=?', [req.params.id]);
+        if (isAjax) return res.json({ success: true, message: 'Removed from watchlist.' });
         res.redirect('/watchlist?success=deleted');
-    } catch(e) { req.flash('error', 'Could not remove.'); res.redirect('/watchlist'); }
+    } catch(e) {
+        if (isAjax) return res.status(500).json({ success: false, message: 'Could not remove.' });
+        req.flash('error', 'Could not remove.'); res.redirect('/watchlist');
+    }
 }));
 
 app.post('/watchlist/add-selected', asyncHandler(async (req, res) => {

@@ -76,14 +76,24 @@
             <form action="/watchlist/add-selected" method="POST" id="watchlistForm">
               <input type="hidden" name="_csrf" value="<%= csrfToken %>"/>
               <div class="watchlist-actions" style="margin-bottom: 1rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap:wrap;">
-                <button type="submit" class="btn btn-primary btn-sm" id="addToWatchlistBtn" disabled>Add Selected to Watchlist</button>
-                <span id="selectedCount" style="font-size: 0.85rem; color: var(--text-secondary);">0 selected</span>
-                <div id="watchlistFeedback" style="display:none; margin-left:1rem; font-size:0.9rem;">&nbsp;</div>
-              </div>
+  <button type="button" class="btn btn-primary btn-sm" id="addToWatchlistBtn" disabled onclick="submitWatchlistFromBtn()">
+    ♥ In Watchlist: <span id="watchlistCount">0</span>
+  </button>
+  <div id="watchlistFeedback" style="display:none; margin-left:1rem; font-size:0.9rem;">&nbsp;</div>
+</div>
 
           <div class="patents-grid">
             <% results.forEach((p, i) => { %>
-              <div class="patent-card" data-watchlist-value="<%= p.selectionValue %>" data-watchlist-state="<%= p.in_watchlist ? 'true' : 'false' %>" style="animation-delay: <%= i * 0.05 %>s">
+              <div class="patent-card"
+  data-watchlist-value="<%= p.selectionValue %>"
+  data-watchlist-state="<%= p.in_watchlist ? 'true' : 'false' %>"
+  data-owner="<%= p.owner %>"
+  data-filing="<%= p.filing_date ? new Date(p.filing_date).toLocaleDateString() : '—' %>"
+  data-owner-since="<%= p.owner_since ? new Date(p.owner_since).toLocaleDateString() : '—' %>"
+  data-status="<%= p.status || 'Unknown' %>"
+  data-industry="<%= p.industry || '—' %>"
+  data-record-type="<%= p.record_type %>"
+  style="animation-delay: <%= i * 0.05 %>s">
                 <% if (p.source) { %>
                   <span class="source-badge uspto"><%= p.source %></span>
                 <% } %>
@@ -108,13 +118,7 @@
                   <% if (p.expiry_date) { %><span class="meta-item">📅 <%= new Date(p.expiry_date).toLocaleDateString() %></span><% } %>
                   <% if (p.industry) { %><span class="meta-item">🏭 <%= p.industry %></span><% } %>
                 </div>
-                <div class="patent-summary-overlay">
-                  <div class="patent-summary-inner">
-                    <div class="summary-headline">Summary</div>
-                    <p class="summary-text"><%- p.summary_html %></p>
-                    <div class="summary-tip">Hover to preview, click card for full details.</div>
-                  </div>
-                </div>
+
                 <div class="patent-detail-html" style="display:none;"><%- p.detail_html %></div>
               </div>
             <% }) %>
@@ -235,15 +239,27 @@
 <div id="summaryModal" class="summary-modal" aria-hidden="true">
   <div class="summary-modal-backdrop"></div>
   <div class="summary-modal-panel" role="dialog" aria-modal="true" aria-labelledby="summaryModalTitle">
+
     <button type="button" class="summary-modal-close" id="summaryModalClose">×</button>
+
     <div class="summary-modal-header">
       <div class="summary-modal-type" id="summaryModalType"></div>
       <h2 class="summary-modal-title" id="summaryModalTitle"></h2>
     </div>
-    <div class="summary-modal-body" id="summaryModalBody"></div>
-    <div class="summary-modal-actions">
-      <button type="button" class="btn btn-primary" id="summaryWatchlistBtn">Add to Watchlist</button>
+
+    <div class="summary-modal-body" id="summaryModalBody">
+      <div class="detail-grid-modal" id="summaryDetailGrid"></div>
+      <div style="margin-top:1.25rem; padding-top:1.25rem; border-top:1px solid rgba(255,255,255,.07);">
+        <div class="summary-copy-label">Summary</div>
+        <p id="summaryDetailCopy"></p>
+      </div>
     </div>
+
+    <div class="summary-modal-actions">
+      <button type="button" class="btn-wl-modal" id="summaryWatchlistBtn">♥ Add to Watchlist</button>
+      <button type="button" class="btn-close-modal" id="summaryModalClose2">Close</button>
+    </div>
+
   </div>
 </div>
 
@@ -255,7 +271,6 @@ function toggleTheme() {
   localStorage.setItem('theme', next);
 }
 
-// Animate stats counting up
 function animateStats() {
   document.querySelectorAll('.stat-num[id]').forEach(el => {
     const target = parseInt(el.textContent.replace(/,/g,''));
@@ -271,87 +286,47 @@ function animateStats() {
   });
 }
 
-// Show/hide ad elements depending on screen width
 function updateAds() {
   const adEl = document.querySelector('[style*="flex-shrink:0"]');
-  if (adEl) {
-    adEl.style.display = window.innerWidth > 1100 ? 'block' : 'none';
-  }
+  if (adEl) adEl.style.display = window.innerWidth > 1100 ? 'block' : 'none';
 }
 
-// PJAX navigation for explore chips
+// ── PJAX chips ──────────────────────────────────────────────────
 document.addEventListener('click', function(e) {
   const link = e.target.closest('a[data-pjax]');
   if (!link) return;
   e.preventDefault();
-
   const url = link.href;
   const scrollY = window.scrollY;
-
-  fetch(url, {
-    credentials: 'same-origin',
-    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-  })
-  .then(response => {
-    if (!response.ok) throw new Error('Network response was not ok');
-    return response.text();
-  })
-  .then(html => {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    const newMain = doc.getElementById('main-content');
-    if (!newMain) {
-      window.location.href = url;
-      return;
-    }
-    const currentMain = document.getElementById('main-content');
-    if (currentMain) {
-      currentMain.replaceWith(newMain);
-    }
-    window.history.pushState({}, '', url);
-    window.scrollTo(0, scrollY);
-    animateStats();
-    updateAds();
-  })
-  .catch(err => {
-    console.error('PJAX navigation failed:', err);
-    window.location.href = url;
-  });
+  fetch(url, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    .then(r => { if (!r.ok) throw new Error(); return r.text(); })
+    .then(html => {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const newMain = doc.getElementById('main-content');
+      if (!newMain) { window.location.href = url; return; }
+      document.getElementById('main-content')?.replaceWith(newMain);
+      window.history.pushState({}, '', url);
+      window.scrollTo(0, scrollY);
+      animateStats(); updateAds(); updateSelectedCount(); bindSummaryCards();
+    })
+    .catch(() => { window.location.href = url; });
 });
 
+// ── Search ──────────────────────────────────────────────────────
 function loadHomeSearch(url) {
-  const currentScrollY = window.scrollY;
-  fetch(url, {
-    credentials: 'same-origin',
-    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-  })
-  .then(response => {
-    if (!response.ok) throw new Error('Network response was not ok');
-    return response.text();
-  })
-  .then(html => {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    const newMain = doc.getElementById('main-content');
-    if (!newMain) {
-      window.location.href = url;
-      return;
-    }
-    const currentMain = document.getElementById('main-content');
-    if (currentMain) {
-      currentMain.replaceWith(newMain);
-    }
-    window.history.pushState({ url }, '', url);
-    window.scrollTo({ top: currentScrollY, behavior: 'auto' });
-    animateStats();
-    updateAds();
-    updateSelectedCount();
-    bindSummaryCards();
-  })
-  .catch(err => {
-    console.error('Search fetch failed:', err);
-    window.location.href = url;
-  });
+  const scrollY = window.scrollY;
+  fetch(url, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    .then(r => { if (!r.ok) throw new Error(); return r.text(); })
+    .then(html => {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const newMain = doc.getElementById('main-content');
+      if (!newMain) { window.location.href = url; return; }
+      document.getElementById('main-content')?.replaceWith(newMain);
+      window.history.pushState({ url }, '', url);
+      window.scrollTo({ top: scrollY, behavior: 'auto' });
+      animateStats(); updateAds(); updateSelectedCount(); bindSummaryCards();
+    })
+    .catch(() => { window.location.href = url; });
 }
 
 document.addEventListener('submit', function(e) {
@@ -359,8 +334,7 @@ document.addEventListener('submit', function(e) {
   if (!form) return;
   e.preventDefault();
   const params = new URLSearchParams(new FormData(form)).toString();
-  const url = form.action + (params ? '?' + params : '');
-  loadHomeSearch(url);
+  loadHomeSearch(form.action + (params ? '?' + params : ''));
 });
 
 document.querySelectorAll('#searchForm input[name="type"]').forEach(input => {
@@ -368,188 +342,240 @@ document.querySelectorAll('#searchForm input[name="type"]').forEach(input => {
     const form = this.closest('#searchForm');
     if (!form) return;
     const params = new URLSearchParams(new FormData(form)).toString();
-    const url = form.action + (params ? '?' + params : '');
-    loadHomeSearch(url);
+    loadHomeSearch(form.action + (params ? '?' + params : ''));
   });
 });
 
-window.addEventListener('popstate', function(event) {
-  if (event.state && event.state.url) {
-    loadHomeSearch(event.state.url);
-  }
+window.addEventListener('popstate', function(e) {
+  if (e.state && e.state.url) loadHomeSearch(e.state.url);
 });
 
-  function updateSelectedCount() {
-    const checkedRadio = document.querySelector('input[name="selected_item"]:checked');
-    const countEl = document.getElementById('selectedCount');
-    const btnEl = document.getElementById('addToWatchlistBtn');
-    const hearts = document.querySelectorAll('.watchlist-heart');
+// ── Watchlist helpers ───────────────────────────────────────────
+function getWatchlistForm()     { return document.getElementById('watchlistForm'); }
+function getWatchlistFeedback() { return document.getElementById('watchlistFeedback'); }
 
-    hearts.forEach(label => {
-      const input = document.getElementById(label.htmlFor);
-      label.classList.toggle('selected', input && input.checked);
+let feedbackTimer = null;
+function showWatchlistFeedback(message, isError = false) {
+  const el = getWatchlistFeedback();
+  if (!el) return;
+  el.textContent = message;
+  el.style.display = 'inline-block';
+  el.style.color = isError ? 'var(--danger)' : 'var(--accent)';
+  if (feedbackTimer) clearTimeout(feedbackTimer);
+  feedbackTimer = setTimeout(() => { el.style.display = 'none'; }, 4500);
+}
+
+function updateSelectedCount() {
+  const checkedRadio = document.querySelector('input[name="selected_item"]:checked');
+  const btnEl = document.getElementById('addToWatchlistBtn');
+  document.querySelectorAll('.watchlist-heart').forEach(label => {
+    const input = document.getElementById(label.htmlFor);
+    label.classList.toggle('selected', input && input.checked);
+  });
+  if (btnEl) btnEl.disabled = !checkedRadio;
+}
+
+// ── Core AJAX add-to-watchlist ──────────────────────────────────
+async function addToWatchlistAjax(selectionValue, onSuccess) {
+  const form = getWatchlistForm();
+  if (!form) return;
+
+  const csrfInput = form.querySelector('input[name="_csrf"]');
+  const csrf = csrfInput ? csrfInput.value : '';
+  const body = `_csrf=${encodeURIComponent(csrf)}&selected_item=${encodeURIComponent(selectionValue)}`;
+
+  try {
+    const response = await fetch('/watchlist/add-selected', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+      },
+      body
     });
+    const json = await response.json().catch(() => null);
 
-    if (countEl) countEl.textContent = checkedRadio ? '1 selected' : '0 selected';
-    if (btnEl) btnEl.disabled = !checkedRadio;
+    if (response.ok && json && json.success) {
+      // increment counter
+      const countEl = document.getElementById('watchlistCount');
+      if (countEl) countEl.textContent = parseInt(countEl.textContent || '0') + 1;
+      showWatchlistFeedback(json.message || 'Added to watchlist!');
+      if (onSuccess) onSuccess();
+    } else {
+      const msg = json?.message || 'Could not add to watchlist.';
+      showWatchlistFeedback(msg, true);
+      if (json?.redirectUrl) window.location.href = json.redirectUrl;
+    }
+  } catch (err) {
+    console.error('Watchlist error:', err);
+    showWatchlistFeedback('Could not add to watchlist. Please try again.', true);
   }
+}
 
-  document.addEventListener('click', function(e) {
-    const heart = e.target.closest('.watchlist-heart');
-    if (!heart) return;
-    if (heart.classList.contains('added')) return;
-    const input = document.getElementById(heart.htmlFor);
-    if (!input) return;
+// ── Heart click on card ─────────────────────────────────────────
+document.addEventListener('click', function(e) {
+  const heart = e.target.closest('.watchlist-heart');
+  if (!heart) return;
+  if (heart.classList.contains('added')) return;
+  // prevent the card click opening the modal
+  e.stopPropagation();
 
-    setTimeout(() => {
-      updateSelectedCount();
-      const form = heart.closest('form');
-      if (form) {
-        if (typeof form.requestSubmit === 'function') form.requestSubmit();
-        else form.submit();
-      }
-    }, 0);
+  const input = document.getElementById(heart.htmlFor);
+  if (!input) return;
+
+  // check the radio first
+  input.checked = true;
+  updateSelectedCount();
+
+  const selectionValue = input.value;
+  const card = input.closest('.patent-card');
+
+  addToWatchlistAjax(selectionValue, () => {
+    // lock the heart
+    heart.classList.add('added');
+    heart.textContent = '♥';
+    heart.title = 'Already in watchlist';
+    // mark card
+    if (card) card.dataset.watchlistState = 'true';
+    // uncheck radio
+    input.checked = false;
+    updateSelectedCount();
   });
+});
 
-  const watchlistForm = document.getElementById('watchlistForm');
-  const watchlistFeedback = document.getElementById('watchlistFeedback');
-  let watchlistFeedbackTimer = null;
+// ── Modal watchlist button ──────────────────────────────────────
+function submitWatchlistFromBtn() {
+  const form = getWatchlistForm();
+  if (!form) return;
+  if (typeof form.requestSubmit === 'function') form.requestSubmit();
+  else form.submit();
+}
 
-  function showWatchlistFeedback(message, isError = false) {
-    if (!watchlistFeedback) return;
-    watchlistFeedback.textContent = message;
-    watchlistFeedback.style.display = 'inline-block';
-    watchlistFeedback.style.color = isError ? 'var(--danger)' : 'var(--accent)';
-    if (watchlistFeedbackTimer) clearTimeout(watchlistFeedbackTimer);
-    watchlistFeedbackTimer = setTimeout(() => {
-      watchlistFeedback.style.display = 'none';
-    }, 4500);
-  }
+// prevent the old form submit from firing (we use addToWatchlistAjax directly now)
+document.addEventListener('submit', function(e) {
+  const form = e.target.closest('#watchlistForm');
+  if (!form) return;
+  e.preventDefault();
+});
 
-  async function submitWatchlistAjax(event) {
-    if (!watchlistForm) return;
-    event.preventDefault();
+// ── Modal ───────────────────────────────────────────────────────
+function closeSummaryModal() {
+  const modal = document.getElementById('summaryModal');
+  if (!modal) return;
+  modal.classList.remove('open');
+  modal.setAttribute('aria-hidden', 'true');
+}
 
-    const form = event.target.closest('#watchlistForm');
-    if (!form) return;
-    const url = form.action;
-    const data = new URLSearchParams(new FormData(form)).toString();
+function bindSummaryCards() {
+  document.querySelectorAll('.patent-card').forEach(card => {
+    if (card.dataset.summaryBound) return;
+    card.dataset.summaryBound = 'true';
+    card.addEventListener('click', function(e) {
+      if (e.target.closest('.watchlist-radio') || e.target.closest('input') || e.target.closest('a')) return;
 
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest',
-          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
-        },
-        body: data
-      });
-      const json = await response.json().catch(() => null);
+      const p_owner       = this.dataset.owner      || '—';
+      const p_filing      = this.dataset.filing     || '—';
+      const p_owner_since = this.dataset.ownerSince || '—';
+      const p_status      = this.dataset.status     || '—';
+      const p_industry    = this.dataset.industry   || '—';
+      const p_type        = this.dataset.recordType || '';
 
-      if (response.ok && json && json.success) {
-        showWatchlistFeedback(json.message || 'Added to watchlist!');
-        const selectedRadio = form.querySelector('input[name="selected_item"]:checked');
-        if (selectedRadio) {
-          const selectedLabel = document.querySelector(`label[for="${selectedRadio.id}"]`);
-          if (selectedLabel) {
-            selectedLabel.classList.add('added');
-            selectedLabel.textContent = '♥';
-            selectedLabel.title = 'Already in watchlist';
+      const title      = this.querySelector('.patent-title')?.textContent?.trim() || 'Details';
+      const number     = this.querySelector('.patent-pill')?.textContent?.trim() || '';
+      const detailEl   = this.querySelector('.patent-detail-html');
+      const summaryBody = detailEl ? detailEl.innerHTML : 'No summary available.';
+
+      const modal = document.getElementById('summaryModal');
+      const watchlistBtn = document.getElementById('summaryWatchlistBtn');
+      if (!modal) return;
+
+      document.getElementById('summaryModalType').textContent = p_type;
+      document.getElementById('summaryModalTitle').textContent = number ? `${number} · ${title}` : title;
+
+      const grid = document.getElementById('summaryDetailGrid');
+      if (grid) {
+        grid.innerHTML = [
+          ['Owner',       p_owner],
+          ['Owner Since', p_owner_since],
+          ['Registered',  p_filing],
+          ['Status',      `<span class="${p_status.toLowerCase()}">${p_status}</span>`],
+          ['Industry',    p_industry],
+          ['Record Type', p_type],
+        ].map(([k, v]) => `<div class="summary-detail-row"><strong>${k}</strong><span>${v}</span></div>`).join('');
+      }
+
+      const copy = document.getElementById('summaryDetailCopy');
+      if (copy) copy.innerHTML = summaryBody;
+
+      if (watchlistBtn) {
+        const already = this.dataset.watchlistState === 'true';
+        watchlistBtn.dataset.selectionValue = this.dataset.watchlistValue || '';
+        watchlistBtn.textContent = already ? '♥ In Watchlist' : '♥ Add to Watchlist';
+        watchlistBtn.classList.toggle('in-wl', already);
+        watchlistBtn.disabled = already;
+      }
+
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+    });
+  });
+}
+
+// modal watchlist button — now uses addToWatchlistAjax directly
+const summaryWatchlistBtn = document.getElementById('summaryWatchlistBtn');
+if (summaryWatchlistBtn) {
+  summaryWatchlistBtn.addEventListener('click', function() {
+    const selectionValue = this.dataset.selectionValue;
+    if (!selectionValue) return;
+
+    const btn = this;
+    addToWatchlistAjax(selectionValue, () => {
+      // update modal button
+      btn.textContent = '♥ In Watchlist';
+      btn.classList.add('in-wl');
+      btn.disabled = true;
+
+      // update the card heart too
+      const form = getWatchlistForm();
+      if (form) {
+        const radio = form.querySelector(`input[name="selected_item"][value="${selectionValue}"]`);
+        if (radio) {
+          const cardHeart = document.querySelector(`label[for="${radio.id}"]`);
+          if (cardHeart) {
+            cardHeart.classList.add('added');
+            cardHeart.textContent = '♥';
+            cardHeart.title = 'Already in watchlist';
           }
-          selectedRadio.checked = false;
+          const card = radio.closest('.patent-card');
+          if (card) card.dataset.watchlistState = 'true';
+          radio.checked = false;
           updateSelectedCount();
         }
-      } else {
-        const message = json && json.message ? json.message : 'Could not add to watchlist.';
-        showWatchlistFeedback(message, true);
-        if (json && json.redirectUrl) {
-          window.location.href = json.redirectUrl;
-        }
-      }
-    } catch (err) {
-      console.error('Watchlist submit failed:', err);
-      showWatchlistFeedback('Could not add to watchlist. Please try again.', true);
-    }
-  }
-
-  if (watchlistForm) {
-    watchlistForm.addEventListener('submit', submitWatchlistAjax);
-  }
-
-  function closeSummaryModal() {
-    const modal = document.getElementById('summaryModal');
-    if (!modal) return;
-    modal.classList.remove('open');
-    modal.setAttribute('aria-hidden', 'true');
-  }
-
-  function bindSummaryCards() {
-    document.querySelectorAll('.patent-card').forEach(card => {
-      if (card.dataset.summaryBound) return;
-      card.dataset.summaryBound = 'true';
-      card.addEventListener('click', function(e) {
-        if (e.target.closest('.watchlist-radio') || e.target.closest('input') || e.target.closest('label') || e.target.closest('a')) return;
-        const title = this.querySelector('.patent-title')?.textContent?.trim() || 'Details';
-        const type = this.querySelector('.patent-meta .meta-item')?.textContent?.trim() || '';
-        const number = this.querySelector('.patent-pill')?.textContent?.trim() || '';
-        const detailEl = this.querySelector('.patent-detail-html');
-        const summaryBody = detailEl ? detailEl.innerHTML : (this.querySelector('.summary-text')?.innerHTML || 'No summary available.');
-        const modal = document.getElementById('summaryModal');
-        const watchlistBtn = document.getElementById('summaryWatchlistBtn');
-        if (!modal) return;
-        document.getElementById('summaryModalType').textContent = type;
-        document.getElementById('summaryModalTitle').textContent = number ? `${number} · ${title}` : title;
-        document.getElementById('summaryModalBody').innerHTML = summaryBody;
-        if (watchlistBtn) {
-          const already = this.dataset.watchlistState === 'true';
-          watchlistBtn.dataset.selectionValue = this.dataset.watchlistValue || '';
-          watchlistBtn.textContent = already ? 'Already in Watchlist' : 'Add to Watchlist';
-          watchlistBtn.disabled = already;
-        }
-        modal.classList.add('open');
-        modal.setAttribute('aria-hidden', 'false');
-      });
-    });
-  }
-
-  const summaryModal = document.getElementById('summaryModal');
-  const summaryModalClose = document.getElementById('summaryModalClose');
-  const summaryWatchlistBtn = document.getElementById('summaryWatchlistBtn');
-  if (summaryWatchlistBtn) {
-    summaryWatchlistBtn.addEventListener('click', function() {
-      const selectionValue = this.dataset.selectionValue;
-      if (!selectionValue) return;
-      if (!watchlistForm) return;
-      const radio = watchlistForm.querySelector(`input[name="selected_item"][value="${selectionValue}"]`);
-      if (radio) {
-        radio.checked = true;
-        updateSelectedCount();
-        if (typeof watchlistForm.requestSubmit === 'function') watchlistForm.requestSubmit();
-        else watchlistForm.submit();
       }
     });
-  }
-  if (summaryModal) {
-    summaryModalClose?.addEventListener('click', closeSummaryModal);
-    summaryModal.addEventListener('click', function(e) {
-      if (e.target === this || e.target.classList.contains('summary-modal-backdrop')) {
-        closeSummaryModal();
-      }
-    });
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') closeSummaryModal();
-    });
-  }
+  });
+}
 
-  updateSelectedCount();
-  bindSummaryCards();
+const summaryModal      = document.getElementById('summaryModal');
+const summaryModalClose  = document.getElementById('summaryModalClose');
+const summaryModalClose2 = document.getElementById('summaryModalClose2');
+if (summaryModal) {
+  summaryModalClose?.addEventListener('click', closeSummaryModal);
+  summaryModalClose2?.addEventListener('click', closeSummaryModal);
+  summaryModal.addEventListener('click', function(e) {
+    if (e.target === this || e.target.classList.contains('summary-modal-backdrop')) closeSummaryModal();
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeSummaryModal();
+  });
+}
 
+updateSelectedCount();
+bindSummaryCards();
 
 document.addEventListener('DOMContentLoaded', () => {
-  const t = localStorage.getItem('theme') || 'dark';
-  document.documentElement.setAttribute('data-theme', t);
-
+  document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
   updateAds();
   animateStats();
   updateSelectedCount();
